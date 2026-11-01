@@ -9,12 +9,14 @@ verify_bp = Blueprint('verify', __name__)
 DOCUMENT_TYPES = [
     'Aadhaar',
     'PAN',
-    'Marksheet',
-    'Certificate',
+    'Driving Licence',
     'Caste Certificate',
+    'Non-Creamy Layer',
+    'Caste Validity',
+    'Marksheet',
     'Income Certificate',
     'Domicile Certificate',
-    'Driving Licence',
+    'Certificate',
     'Other'
 ]
 

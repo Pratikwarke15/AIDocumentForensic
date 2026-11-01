@@ -18,6 +18,7 @@ from app.forensic.sharpness import extract_sharpness_features
 from app.forensic.metadata import extract_image_metadata
 from app.forensic.pdf_forensics import analyze_pdf_structure, render_pdf_page_to_image
 from app.forensic.ocr_layout import extract_ocr_and_layout_features
+from app.forensic.template_validator import validate_document_template
 from app.forensic.scoring import aggregate_forensic_evidence, combine_record_and_forensic_results
 from app.models import Document, VerificationHistory, ForensicResult
 
@@ -138,6 +139,26 @@ class VerificationService:
         # 6. OCR / Typography Layout Analysis
         ocr_data, layout_features = extract_ocr_and_layout_features(image_np=analysis_np)
 
+        # 6.5. Semantic Template & Non-Document Validation (Pillar 1)
+        pdf_text = ""
+        if file_type == 'pdf':
+            try:
+                import fitz
+                _doc = fitz.open(str(saved_file_path))
+                pdf_text = " ".join([page.get_text("text") for page in _doc])
+                _doc.close()
+            except Exception:
+                pass
+
+        combined_extracted_text = (pdf_text + " " + ocr_data.get('extracted_text_preview', '')).strip()
+        template_res = validate_document_template(
+            image_np=analysis_np,
+            doc_type=doc_type,
+            doc_number=doc_number,
+            holder_name=holder_name,
+            extracted_text=combined_extracted_text
+        )
+
         # Compile Full Feature Vector (28+ features)
         feature_vector = compile_feature_vector(
             ela_feats=ela_features,
@@ -149,11 +170,10 @@ class VerificationService:
             layout_feats=layout_features
         )
 
-        # 7. Random Forest Inference
+        # 7. Machine Learning Forensic Inference
         rf_result = self.model_manager.predict(feature_vector)
 
-        # 8. Evidence Aggregation & Final Scoring
-        # Build comprehensive evaluation feature map with normalized scores and severities
+        # 8. Evidence Aggregation & Final Scoring (3-Pillar Architecture)
         eval_features = dict(feature_vector)
         eval_features.update({
             'ela_normalized_score': ela_res.get('ela_normalized_score', 0.0),
@@ -175,7 +195,9 @@ class VerificationService:
             rf_probability=rf_result['probability'],
             features=eval_features,
             metadata=combined_metadata,
-            model_trained=rf_result['model_trained']
+            model_trained=rf_result['model_trained'],
+            template_validation=template_res,
+            record_verification=record_res
         )
 
         # Layer A: Original Document Match Calculation

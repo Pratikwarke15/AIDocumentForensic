@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --primary: #0284c7;
   --primary-hover: #0369a1;
   --primary-light: #e0f2fe;
@@ -334,10 +334,16 @@ body {
   margin-top: 0.2rem;
 }
 
-/* Dual Verdict Banner */
+/* Dual / Tri-Pillar Verdict Banner */
 .dual-verdict-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.pillar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -346,6 +352,9 @@ body {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .verdict-header {
   font-size: 0.8rem;
@@ -366,6 +375,13 @@ body {
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   margin-bottom: 1.5rem;
+}
+
+/* Drag & Drop Feedback */
+#dropZone.dragover {
+  border-color: var(--primary) !important;
+  background-color: var(--primary-light) !important;
+  transform: scale(1.01);
 }
 
 /* Modals */

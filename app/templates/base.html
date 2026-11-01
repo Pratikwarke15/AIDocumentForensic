@@ -54,21 +54,21 @@
         </div>
     </header>
 
-    <!-- Flash Messages -->
-    <div class="main-content" style="margin-bottom: 0; padding-bottom: 0;">
+    <!-- Main Content Container -->
+    <main class="main-content">
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <span>{{ message }}</span>
-                    </div>
-                {% endfor %}
+                <div style="margin-bottom: 1.25rem;">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
-    </div>
 
-    <!-- Main Content Block -->
-    <main class="main-content">
         {% block content %}{% endblock %}
     </main>
 

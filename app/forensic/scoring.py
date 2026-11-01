@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 # Domain evidence weights in the final forensic decision engine
 WEIGHT_RANDOM_FOREST = 0.30
@@ -12,22 +12,73 @@ def aggregate_forensic_evidence(rf_prediction: int,
                                 rf_probability: float,
                                 features: Dict[str, Any],
                                 metadata: Dict[str, Any],
-                                model_trained: bool = True) -> Dict[str, Any]:
+                                model_trained: bool = True,
+                                template_validation: Optional[Dict[str, Any]] = None,
+                                record_verification: Any = None) -> Dict[str, Any]:
     """
-    Transparent Multi-Signal Forensic Decision Engine.
-    Combines Random Forest classification with 5 computer vision and metadata domains.
-
-    Outputs:
-    - forensic_status: 'AUTHENTIC', 'REVIEW REQUIRED', 'POTENTIALLY MANIPULATED'
-    - display_status: Human-facing 3-state verdict
-    - confidence: 0.0 - 100.0 (calibrated from multi-signal consensus and agreement)
-    - indicators: list of human-readable forensic findings
-    - explanation: comprehensive human-readable summary
-    - analysis_consistency: domain-by-domain consistency breakdown
-    - debug_info: developer mode metrics with raw values, normalized scores, severities, and weights
-    - signals: simplified status per domain for backward compatibility
+    Transparent Multi-Signal Forensic Decision Engine with 3-Pillar Architecture:
+    1. Pillar 1: Document Template & Format Semantic Validation
+    2. Pillar 2: Database Registry Record Cross-Check
+    3. Pillar 3: Multi-Signal Digital Image & Metadata Forensics
     """
     indicators = []
+
+    # -------------------------------------------------------------
+    # 0. Template & Document Nature Validation (Pillar 1)
+    # -------------------------------------------------------------
+    template_score = 100.0
+    is_valid_template = True
+    template_status = "VALID TEMPLATE"
+
+    if template_validation:
+        is_valid_template = template_validation.get('is_valid_template', True)
+        template_score = float(template_validation.get('template_score', 100.0))
+        template_status = template_validation.get('template_status', 'VALID TEMPLATE')
+
+        # Fast rejection if image is a non-document (e.g. celebrity photo, scenery)
+        if not is_valid_template or template_score < 40.0:
+            rejection_reason = template_validation.get('rejection_reason') or (
+                "The uploaded file is not a valid government document. "
+                "Analysis detected a non-document image (such as an arbitrary photo or portrait) "
+                "lacking official government document structure, official keywords, and required typography."
+            )
+            indicators.insert(0, f"Template Validation FAILED: {template_status}")
+            
+            return {
+                'forensic_status': "INVALID / NON-DOCUMENT",
+                'display_status': "REJECTED: NON-DOCUMENT FILE",
+                'confidence': 98.0,
+                'authenticity_confidence': 0.0,
+                'manipulation_score': 100.0,
+                'risk_score': 100.0,
+                'suspicious_region_percentage': 0.0,
+                'tamper_ratio': 0.0,
+                'indicators': indicators,
+                'explanation': rejection_reason,
+                'analysis_consistency': {
+                    'ml_classification': 'INVALID',
+                    'ml_probability': 0.0,
+                    'ela_result': 'N/A',
+                    'noise_result': 'N/A',
+                    'copymove_result': 'N/A',
+                    'compression_result': 'N/A',
+                    'metadata_result': 'N/A',
+                    'consensus_verdict': "INVALID / NON-DOCUMENT",
+                    'is_consistent': True,
+                    'explanation': rejection_reason
+                },
+                'debug_info': {},
+                'rf_probability': 0.0,
+                'composite_score': 100.0,
+                'signals': {'template': 'INVALID'},
+                'severities': {},
+                'template_validation': template_validation,
+                'three_pillars': {
+                    'template': {'score': template_score, 'status': template_status},
+                    'registry': {'score': 0.0, 'status': 'NOT APPLICABLE'},
+                    'forensics': {'score': 0.0, 'status': 'NON-DOCUMENT REJECTED'}
+                }
+            }
 
     # -------------------------------------------------------------
     # 1. Error Level Analysis (ELA) Domain (Weight: 20%)
@@ -281,7 +332,35 @@ def aggregate_forensic_evidence(rf_prediction: int,
         )
     )
 
-    if has_tampering_consensus:
+    # -------------------------------------------------------------
+    # 3-Pillar Scoring Integration
+    # -------------------------------------------------------------
+    t_score = float(template_score)
+    r_status = getattr(record_verification, 'status', 'NOT CHECKED') if record_verification else 'NOT CHECKED'
+    if r_status == 'VERIFIED':
+        r_score = 100.0
+    elif r_status == 'MISMATCH':
+        r_score = 0.0
+        indicators.insert(0, "Registry Integrity: Document number matched, but citizen details mismatched official record.")
+    elif r_status == 'RECORD NOT FOUND':
+        r_score = 45.0
+        indicators.append("Registry Integrity: Document identifier was not located in database (-15% confidence deduction).")
+    else:
+        r_score = 50.0
+
+    f_score = round(max(100.0 - weighted_score, 0.0), 1)
+    composite_auth_score = round((0.35 * t_score) + (0.35 * r_score) + (0.30 * f_score), 1)
+
+    if r_status == 'MISMATCH':
+        status = "POTENTIALLY MANIPULATED"
+        display_status = "REGISTRY DATA MISMATCH & SUSPECTED FORGERY"
+        confidence = 92.0
+        explanation = (
+            "The document number exists in the official registry, but the holder name or critical fields on the "
+            "uploaded document do not match the registered citizen record, indicating identity tampering or forged credentials."
+        )
+
+    elif has_tampering_consensus:
         status = "POTENTIALLY MANIPULATED"
         display_status = "POTENTIALLY MANIPULATED"
         confidence = round(min(max(p_manip * 100.0, weighted_score, 80.0), 98.0), 1)
@@ -308,15 +387,20 @@ def aggregate_forensic_evidence(rf_prediction: int,
 
     elif is_clean_authentic:
         status = "AUTHENTIC"
-        display_status = "AUTHENTIC / LOW FORENSIC RISK"
-        auth_factor = 1.0 - (weighted_score / 100.0)
-        confidence = round(min(max(auth_factor * 100.0, 85.0), 98.0), 1)
-        explanation = (
-            "The document exhibits uniform forensic traits across all physical imaging domains "
-            "(ELA, noise consistency, compression grid, and keypoint patterns). Any localized variance "
-            "is attributable to legitimate official markings (stamps, signatures, QR codes), flatbed scanning, "
-            "or photographic capture rather than digital manipulation."
-        )
+        if r_status == 'VERIFIED':
+            display_status = "AUTHENTIC / VERIFIED ORIGINAL DOCUMENT"
+            confidence = round(min(max(composite_auth_score, 88.0), 98.0), 1)
+            explanation = (
+                "The document exhibits uniform forensic traits across all physical imaging domains "
+                "(ELA, noise consistency, compression grid) and matches the verified citizen record in the official registry."
+            )
+        else:
+            display_status = "AUTHENTIC FILE (RECORD UNVERIFIED IN REGISTRY)"
+            confidence = round(min(max(composite_auth_score, 65.0), 85.0), 1)
+            explanation = (
+                "The document exhibits uniform physical forensic traits and adheres to official template standards. "
+                "However, the document number was not located in the local registry database (authenticity confidence adjusted accordingly)."
+            )
         if not indicators:
             indicators.append("Digital forensic characteristics are consistent with an authentic original document.")
             indicators.append("No anomalous ELA, compression, noise, or copy-move artifacts detected.")
@@ -442,7 +526,17 @@ def aggregate_forensic_evidence(rf_prediction: int,
             'compression': comp_sev,
             'metadata': meta_sev,
             'random_forest': rf_sev
-        }
+        },
+        'template_score': t_score,
+        'registry_score': r_score,
+        'forensic_score': f_score,
+        'composite_auth_score': composite_auth_score,
+        'three_pillars': {
+            'template': {'score': t_score, 'status': template_status},
+            'registry': {'score': r_score, 'status': r_status},
+            'forensics': {'score': f_score, 'status': status}
+        },
+        'template_validation': template_validation or {'is_valid_template': True, 'template_status': 'VALID', 'template_score': 100.0}
     }
 
 def combine_record_and_forensic_results(record_status: str, forensic_status: str) -> str:
@@ -450,6 +544,8 @@ def combine_record_and_forensic_results(record_status: str, forensic_status: str
     Decoupled integration of Layer A (Local/Demo Registry) and Layer B (Digital Forensics).
     Crucially: 'RECORD NOT FOUND' does NOT equate to a manipulated or forged document.
     """
+    if forensic_status == "INVALID / NON-DOCUMENT":
+        return "REJECTED: NOT A VALID DOCUMENT"
     if record_status == "VERIFIED":
         if forensic_status == "AUTHENTIC":
             return "VERIFIED RECORD & FORENSICALLY CONSISTENT"

@@ -1,11 +1,12 @@
-﻿import os
+import os
 import json
 from pathlib import Path
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, abort, send_file
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.models import VerificationRecord
 from app.routes.verify_routes import DOCUMENT_TYPES
+from app.verification.excel_manager import generate_excel_template, import_records_to_registry, DOCUMENT_SCHEMAS
 
 registry_bp = Blueprint('registry', __name__)
 
@@ -19,16 +20,105 @@ def require_admin():
 def list_records():
     session = current_app.session_factory()
     try:
-        records = session.query(VerificationRecord).filter_by(is_active=True).order_by(VerificationRecord.record_id.asc()).all()
+        category_filter = request.args.get('category', '').strip()
+        search_query = request.args.get('q', '').strip()
+
+        query = session.query(VerificationRecord).filter_by(is_active=True)
+        if category_filter:
+            query = query.filter_by(document_type=category_filter)
+        if search_query:
+            query = query.filter(
+                (VerificationRecord.document_number.ilike(f"%{search_query}%")) |
+                (VerificationRecord.holder_name.ilike(f"%{search_query}%")) |
+                (VerificationRecord.record_id.ilike(f"%{search_query}%"))
+            )
+
+        records = query.order_by(VerificationRecord.last_synced_at.desc()).all()
         inactive_count = session.query(VerificationRecord).filter_by(is_active=False).count()
+
+        # Group counts by document type
+        category_counts = {}
+        for dt in DOCUMENT_TYPES:
+            category_counts[dt] = session.query(VerificationRecord).filter_by(document_type=dt, is_active=True).count()
+
         return render_template(
             'admin/registry.html',
             records=records,
             inactive_count=inactive_count,
-            document_types=DOCUMENT_TYPES
+            document_types=DOCUMENT_TYPES,
+            category_counts=category_counts,
+            current_category=category_filter,
+            search_query=search_query
         )
     finally:
         session.close()
+
+@registry_bp.route('/template/<doc_type>')
+def download_template(doc_type):
+    """
+    Generates and returns an official Excel template (.xlsx) with pre-filled headers
+    and realistic sample records for the requested document category.
+    """
+    try:
+        buffer, filename = generate_excel_template(doc_type)
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if filename.endswith('.xlsx') else 'text/csv'
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype
+        )
+    except Exception as e:
+        flash(f"Error generating template for '{doc_type}': {str(e)}", 'danger')
+        return redirect(url_for('registry.list_records'))
+
+@registry_bp.route('/upload-excel', methods=['POST'])
+def upload_excel():
+    """
+    Parses and synchronizes records from an uploaded Excel (.xlsx, .xls) or .csv file
+    into the database and filesystem registry.
+    """
+    doc_type = request.form.get('document_type', '').strip()
+    file_obj = request.files.get('excel_file')
+
+    if not doc_type or not file_obj or not file_obj.filename:
+        flash('Please select a Document Category and an Excel/CSV file to upload.', 'danger')
+        return redirect(url_for('registry.list_records'))
+
+    filename = secure_filename(file_obj.filename)
+    if not (filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv')):
+        flash('Only .xlsx, .xls, and .csv spreadsheet formats are supported.', 'danger')
+        return redirect(url_for('registry.list_records'))
+
+    try:
+        file_bytes = file_obj.read()
+        stats = import_records_to_registry(
+            file_bytes=file_bytes,
+            filename=filename,
+            doc_type=doc_type,
+            session_factory=current_app.session_factory,
+            registry_provider=getattr(current_app, 'registry_provider', None)
+        )
+
+        current_app.audit_service.log(
+            'REGISTRY_EXCEL_IMPORTED',
+            user_id=current_user.id,
+            target_type='DOCUMENT_REGISTRY',
+            target_id=doc_type,
+            details=stats,
+            ip_address=request.remote_addr
+        )
+
+        success_msg = f"Excel Import Complete for '{doc_type}': {stats['added']} records added, {stats['updated']} updated."
+        if stats['errors']:
+            flash(f"{success_msg} (Notice: {len(stats['errors'])} rows skipped due to missing required fields).", 'warning')
+        else:
+            flash(success_msg, 'success')
+
+    except Exception as e:
+        flash(f"Failed to import Excel file: {str(e)}", 'danger')
+
+    return redirect(url_for('registry.list_records'))
 
 @registry_bp.route('/add', methods=['POST'])
 def add_record():

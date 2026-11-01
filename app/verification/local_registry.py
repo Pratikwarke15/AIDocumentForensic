@@ -7,12 +7,16 @@ from typing import Optional, Dict, Any, List
 from app.verification.base import VerificationProvider, RecordVerificationResult
 from app.models import VerificationRecord
 
+import difflib
+
 DOCUMENT_TYPE_TO_FOLDER = {
     'Aadhaar': 'aadhaar',
     'PAN': 'pan',
     'Marksheet': 'marksheets',
     'Certificate': 'certificates',
     'Caste Certificate': 'caste_certificates',
+    'Non-Creamy Layer': 'non_creamy_layer',
+    'Caste Validity': 'caste_validity',
     'Income Certificate': 'income_certificates',
     'Domicile Certificate': 'domicile_certificates',
     'Driving Licence': 'driving_licence',
@@ -23,6 +27,30 @@ def normalize_string(s: Optional[str]) -> str:
     if not s:
         return ""
     return "".join(s.upper().split())
+
+def is_name_match(name1: Optional[str], name2: Optional[str]) -> bool:
+    """
+    Robust name comparison allowing for minor spacing differences, middle initial abbreviations,
+    or token permutations while strictly rejecting completely different names.
+    """
+    if not name1 or not name2:
+        return False
+    norm1 = normalize_string(name1)
+    norm2 = normalize_string(name2)
+    if norm1 == norm2:
+        return True
+
+    # Token overlap check
+    tokens1 = set(name1.upper().split())
+    tokens2 = set(name2.upper().split())
+    if tokens1 and tokens2:
+        intersection = tokens1.intersection(tokens2)
+        if len(intersection) >= min(len(tokens1), len(tokens2)):
+            return True
+
+    # Fuzzy SequenceMatcher ratio
+    ratio = difflib.SequenceMatcher(None, norm1, norm2).ratio()
+    return ratio >= 0.85
 
 class LocalRegistryProvider(VerificationProvider):
     """
@@ -77,7 +105,7 @@ class LocalRegistryProvider(VerificationProvider):
 
             # Check holder name match
             if holder_name:
-                if normalize_string(holder_name) == normalize_string(matched_record.holder_name):
+                if is_name_match(holder_name, matched_record.holder_name):
                     matched_fields['holder_name'] = matched_record.holder_name
                 else:
                     mismatched_fields['holder_name'] = {
