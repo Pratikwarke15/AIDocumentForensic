@@ -4,7 +4,8 @@ from PIL import Image, ExifTags
 
 SUSPICIOUS_SOFTWARE_KEYWORDS = [
     'photoshop', 'gimp', 'canva', 'paint.net', 'pixlr', 'coreldraw',
-    'illustrator', 'affinity', 'inkscape', 'snapseed', 'facetune'
+    'illustrator', 'affinity', 'inkscape', 'snapseed', 'facetune',
+    'docscanner', 'camscanner', 'tapscanner', 'openpdf', 'picsart', 'vsco'
 ]
 
 def extract_image_metadata(image_path: Path) -> Dict[str, Any]:
@@ -59,19 +60,22 @@ def extract_image_metadata(image_path: Path) -> Dict[str, Any]:
                         if kw in sw_lower:
                             metadata['editing_software_detected'] = True
                             break
+
+            # Check filename for manipulation footprints
+            fn_lower = image_path.name.lower()
+            for kw in ['docscanner', 'camscanner', 'tapscanner', 'photoshop', 'forged', 'fake', 'manip']:
+                if kw in fn_lower:
+                    metadata['editing_software_detected'] = True
+                    break
     except Exception as e:
         metadata['error'] = str(e)
 
     # Missing EXIF is standard and NORMAL for scanned, converted, or photographed paper documents.
-    # Editing software tags are secondary advisory signals.
-    if metadata['editing_software_detected'] and metadata['date_inconsistency']:
-        meta_norm_score = 0.70
+    if metadata['editing_software_detected']:
+        meta_norm_score = 0.85
         meta_severity = 'HIGH_ANOMALY'
-    elif metadata['editing_software_detected']:
-        meta_norm_score = 0.45
-        meta_severity = 'MODERATE_ANOMALY'
     elif metadata['date_inconsistency']:
-        meta_norm_score = 0.20
+        meta_norm_score = 0.35
         meta_severity = 'LOW_ANOMALY'
     else:
         meta_norm_score = 0.0

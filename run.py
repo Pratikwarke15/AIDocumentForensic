@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 from pathlib import Path
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     host = os.environ.get('HOST', '127.0.0.1')
     
     print("=" * 60)
-    print("AI FORENSICS - GOVERNMENT DOCUMENT VERIFICATION SYSTEM")
+    print("GOVERNMENT DOCUMENT VERIFICATION & FORENSICS SYSTEM")
     print("=" * 60)
     print(f"Server Running At:  http://{host}:{port}")
     print("Default Admin:      admin / Admin@12345")

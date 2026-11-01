@@ -79,20 +79,24 @@ def extract_noise_features(image_np: np.ndarray,
         c_p90 = float(np.percentile(c_np, 90))
         c_p10 = float(np.percentile(c_np, 10))
         content_disparity = float(c_p90 / max(c_p10, 0.5))
+        c_median = float(np.median(c_np))
+        c_max = float(np.max(c_np))
+        outlier_disparity = float(c_max / max(c_median, 0.5))
     else:
         noise_cv = 0.15
         content_disparity = 1.0
+        outlier_disparity = 1.0
 
     # Classify severity level based on content-area noise consistency
     # On typical document pages, white paper margins alongside text blocks naturally yield
-    # a coefficient of variation around 1.0. Genuine splicing / alien noise injection produces CV > 2.2.
-    if c_std <= 2.0 or (c_p90 - c_p10 <= 5.0) or noise_cv <= 1.25 or content_disparity <= 6.0:
+    # a coefficient of variation around 1.0. Genuine splicing / alien noise injection produces CV > 2.2 or outlier > 16.0.
+    if (c_std <= 2.0 or (c_p90 - c_p10 <= 5.0) or (noise_cv <= 1.25 and content_disparity <= 6.0)) and outlier_disparity <= 14.0:
         noise_norm_score = round(min(noise_cv * 0.15, 0.20), 3)
         noise_severity = 'NORMAL'
-    elif noise_cv <= 2.0 or content_disparity <= 12.0:
+    elif (noise_cv <= 2.0 and content_disparity <= 12.0) and outlier_disparity <= 22.0:
         noise_norm_score = round(min(0.20 + (noise_cv - 1.25) * 0.25, 0.40), 3)
         noise_severity = 'LOW_ANOMALY'
-    elif noise_cv <= 3.20 or content_disparity <= 20.0:
+    elif (noise_cv <= 3.20 and content_disparity <= 20.0) and outlier_disparity <= 35.0:
         noise_norm_score = round(min(0.40 + (noise_cv - 2.0) * 0.25, 0.70), 3)
         noise_severity = 'MODERATE_ANOMALY'
     else:

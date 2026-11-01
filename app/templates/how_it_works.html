@@ -1,13 +1,13 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
-{% block title %}How It Works - Academic Methodology & Forensics{% endblock %}
+{% block title %}How It Works - Verification Methodology & Forensics{% endblock %}
 
 {% block content %}
 <div style="max-width: 960px; margin: 0 auto;">
     <div style="margin-bottom: 2rem; text-align: center;">
-        <h1 style="font-size: 2.2rem; font-weight: 800; color: #0f172a;">Academic Methodology & Technical Pipeline</h1>
+        <h1 style="font-size: 2.2rem; font-weight: 800; color: #0f172a;">Verification Methodology & Technical Architecture</h1>
         <p style="color: #475569; font-size: 1rem; margin-top: 0.5rem;">
-            Based on the academic paper: <em>"SpliceFound: A Web-Based Image Splicing Detection Tool Using Error Level Analysis (ELA)"</em> and enhanced with trained Random Forest classification for document security.
+            Multi-signal digital forensic analysis and calibrated statistical screening for government document verification.
         </p>
     </div>
 
@@ -35,11 +35,11 @@
     <!-- Section 2: Why Random Forest -->
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">2. Machine Learning Enhancement: Beyond Fixed Thresholds</h3>
-            <span class="badge badge-primary">Core Research Improvement</span>
+            <h3 class="card-title">2. Multi-Signal Verification & Machine Learning</h3>
+            <span class="badge badge-primary">Forensic Consensus</span>
         </div>
         <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1rem;">
-            Prior systems (such as baseline SpliceFound) rely on a single empirical threshold (e.g. 0.02 tamper pixel ratio) to classify an image as forged. In real-world government documents, variations in scanning resolution and background noise make a single threshold unreliable.
+            Single-signal screening tools rely on a single empirical threshold (e.g. 0.02 tamper pixel ratio) to classify an image as forged. In real-world government documents, variations in scanning resolution and background noise make a single threshold unreliable.
         </p>
         <p style="color: #334155; font-size: 0.92rem; line-height: 1.6;">
             Our system replaces the rigid threshold with a <strong>Random Forest Classifier</strong> trained on 28+ numerical features:
@@ -62,7 +62,7 @@
             In Phase 1, the platform operates a local simulation registry stored in <code>/verification_records/</code> with subfolders for Aadhaar, PAN, Marksheets, Certificates, Caste, Income, and Domicile documents. The database maintains a fast indexed cache that automatically synchronizes with folder changes.
         </p>
         <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1rem; border-radius: 6px; font-size: 0.85rem; color: #92400e;">
-            <strong>Ethical & Legal Notice:</strong> Missing records from the local registry result in <em>"RECORD NOT FOUND"</em>, indicating absence from the prototype demonstration database rather than conclusive invalidation of authentic government documents.
+            <strong>Important Notice:</strong> Missing records from the local registry result in <em>"RECORD NOT FOUND"</em>, indicating absence from the local verification repository rather than conclusive invalidation of authentic government documents.
         </div>
     </div>
 </div>

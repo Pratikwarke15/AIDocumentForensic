@@ -227,11 +227,11 @@ def aggregate_forensic_evidence(rf_prediction: int,
     ) * 100.0
     weighted_score = round(min(max(weighted_score, 0.0), 100.0), 1)
 
-    # Count classical domain severities
-    classical_severities = [ela_sev, copymove_sev, noise_sev, comp_sev]
-    high_count = sum(1 for s in classical_severities if s == 'HIGH_ANOMALY')
-    moderate_count = sum(1 for s in classical_severities if s == 'MODERATE_ANOMALY')
-    low_count = sum(1 for s in classical_severities if s == 'LOW_ANOMALY')
+    # Count all domain severities across physical and metadata forensics
+    all_severities = [ela_sev, copymove_sev, noise_sev, comp_sev, meta_sev]
+    high_count = sum(1 for s in all_severities if s == 'HIGH_ANOMALY')
+    moderate_count = sum(1 for s in all_severities if s == 'MODERATE_ANOMALY')
+    low_count = sum(1 for s in all_severities if s == 'LOW_ANOMALY')
 
     # -------------------------------------------------------------
     # Multi-Signal Consensus Decision Engine
@@ -239,17 +239,17 @@ def aggregate_forensic_evidence(rf_prediction: int,
     sharpness_disparity = float(features.get('sharpness_disparity_ratio', 1.0))
     
     # Calculate counts of OTHER signals (excluding copymove) to ensure true corroboration
-    other_severities = [ela_sev, noise_sev, comp_sev]
+    other_severities = [ela_sev, noise_sev, comp_sev, meta_sev]
     other_high = sum(1 for s in other_severities if s == 'HIGH_ANOMALY')
     other_mod = sum(1 for s in other_severities if s == 'MODERATE_ANOMALY')
 
     # Check for strong tampering corroboration strictly enforcing Requirement 10
-    # Rule: No single signal alone may classify a document as POTENTIALLY MANIPULATED.
+    # Rule: Tampering verdict requires multi-signal forensic consensus.
     # Condition 1: At least 2 independent signals show HIGH ANOMALY.
     c1 = (high_count >= 2)
     # Condition 2: 1 signal shows HIGH ANOMALY AND at least 1 other signal shows MODERATE ANOMALY.
     c2 = (high_count >= 1 and (other_mod >= 1 or (copymove_sev != 'HIGH_ANOMALY' and copymove_sev == 'MODERATE_ANOMALY')))
-    # Condition 3: Random Forest model predicts manipulated with high probability (P >= 0.70)
+    # Condition 3: Forensic classifier model predicts manipulated with high probability (P >= 0.70)
     # AND at least 1 independent signal shows MODERATE or HIGH ANOMALY.
     c3 = (p_manip >= 0.70 and (high_count >= 1 or moderate_count >= 1))
     # Condition 4: Copy-move detection confirms duplicated regions AND at least 1 independent signal
@@ -259,18 +259,24 @@ def aggregate_forensic_evidence(rf_prediction: int,
     c5 = (copymove_count >= 2 and (other_high >= 1 or other_mod >= 1 or p_manip >= 0.50))
     # Condition 6: Elevated ML probability with corroborating moderate anomaly
     c6 = (p_manip >= 0.65 and moderate_count >= 1)
+    # Condition 7: High metadata/structural anomaly (e.g. mobile scanner wrapper, editing tool, PDF modification)
+    # corroborated by physical image domain anomaly or elevated ML probability or significant risk score
+    c7 = (meta_sev == 'HIGH_ANOMALY' and (other_high >= 1 or other_mod >= 1 or copymove_count >= 1 or p_manip >= 0.35 or weighted_score >= 20.0))
+    # Condition 8: High ELA anomaly corroborated by compression/noise or elevated probability
+    c8 = (ela_sev == 'HIGH_ANOMALY' and (other_high >= 1 or other_mod >= 1 or p_manip >= 0.38 or weighted_score >= 28.0))
 
-    has_tampering_consensus = (c1 or c2 or c3 or c4 or c5 or c6)
+    has_tampering_consensus = (c1 or c2 or c3 or c4 or c5 or c6 or c7 or c8)
 
-    # Clean authentic: zero high anomalies, zero moderate anomalies, no copy-move duplication
+    # Clean authentic: zero high anomalies, zero copy-move duplication, clean metadata and low risk score
     tamper_ratio_val = float(features.get('tamper_ratio', 0.0))
     is_scan_or_recomp = (blockiness > 1.08 and tamper_ratio_val < 0.02 and weighted_score < 35.0)
     is_uniform_benign = (
         ela_num_components >= 20 and ela_tamper_ratio < 0.06 and weighted_score < 25.0
     )
     is_clean_authentic = (
-        high_count == 0 and other_high == 0 and other_mod == 0 and copymove_count == 0 and (
-            (moderate_count == 0 and (p_manip <= 0.28 or ((is_scan_or_recomp or is_uniform_benign) and p_manip <= 0.42))) or
+        high_count == 0 and copymove_count == 0 and meta_sev in ('NORMAL', 'LOW_ANOMALY') and ela_sev in ('NORMAL', 'LOW_ANOMALY') and (
+            (moderate_count == 0 and (p_manip <= 0.45 or ((is_scan_or_recomp or is_uniform_benign) and p_manip <= 0.50)) and weighted_score < 35.0) or
+            (moderate_count <= 1 and p_manip <= 0.38 and weighted_score < 30.0) or
             (is_uniform_benign and p_manip <= 0.53 and weighted_score < 25.0)
         )
     )
@@ -289,9 +295,14 @@ def aggregate_forensic_evidence(rf_prediction: int,
                 "Severe Error Level Analysis (ELA) discrepancy detected across document content, "
                 "indicating localized multi-compression digital splicing."
             )
+        elif meta_sev == 'HIGH_ANOMALY':
+            explanation = (
+                "Suspicious document metadata or structural footprint detected (e.g. mobile scanner wrapper, "
+                "document editing software, or modified binary structure) indicating non-original production."
+            )
         else:
             explanation = (
-                "Multiple independent forensic indicators (Random Forest classifier and computer vision signals) "
+                "Multiple independent forensic indicators (forensic classifier and computer vision signals) "
                 "provide corroborating evidence of localized digital manipulation or document alteration."
             )
 
@@ -436,7 +447,7 @@ def aggregate_forensic_evidence(rf_prediction: int,
 
 def combine_record_and_forensic_results(record_status: str, forensic_status: str) -> str:
     """
-    Decoupled integration of Layer A (Local/Demo Registry) and Layer B (AI Forensics).
+    Decoupled integration of Layer A (Local/Demo Registry) and Layer B (Digital Forensics).
     Crucially: 'RECORD NOT FOUND' does NOT equate to a manipulated or forged document.
     """
     if record_status == "VERIFIED":

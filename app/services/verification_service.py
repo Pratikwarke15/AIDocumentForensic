@@ -47,7 +47,7 @@ class VerificationService:
         Executes complete verification pipeline:
         1. Layer A: Record verification
         2. File preservation & validation
-        3. Layer B: AI Forensics
+        3. Layer B: Digital Forensics
         4. Evidence aggregation
         5. Database record creation
         6. PDF report generation
@@ -74,7 +74,7 @@ class VerificationService:
             except ValueError:
                 parsed_issue_date = None
 
-        # STEP 3: Layer B - AI Forensic Analysis
+        # STEP 3: Layer B - Digital Forensic Analysis
         unique_prefix = f"{sha256[:12]}_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
         
         pdf_metadata = {}

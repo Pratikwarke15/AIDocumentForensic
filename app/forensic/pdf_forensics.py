@@ -6,8 +6,11 @@ from PIL import Image
 import numpy as np
 
 SUSPICIOUS_PDF_PRODUCERS = [
+    'openpdf', 'docscanner', 'camscanner', 'tapscanner', 'itext',
     'photoshop', 'illustrator', 'canva', 'gimp', 'inkscape', 'coreldraw',
-    'quartz pdfcontext', 'pdf edit', 'ilovepdf', 'smallpdf'
+    'quartz pdfcontext', 'pdf edit', 'ilovepdf', 'smallpdf', 'sejda',
+    'online2pdf', 'pdf24', 'foxit', 'nitro', 'wondershare', 'abbyy',
+    'pdfkit', 'wkhtmltopdf', 'cairosvg'
 ]
 
 def analyze_pdf_structure(pdf_path: Path) -> Tuple[Dict[str, Any], Dict[str, float]]:
@@ -61,6 +64,13 @@ def analyze_pdf_structure(pdf_path: Path) -> Tuple[Dict[str, Any], Dict[str, flo
                         metadata['suspicious_producer_detected'] = True
                         break
 
+        # Check filename for mobile scan / manipulation footprints
+        fn_lower = pdf_path.name.lower()
+        for kw in ['docscanner', 'camscanner', 'tapscanner', 'photoshop', 'forged', 'fake', 'manip']:
+            if kw in fn_lower:
+                metadata['suspicious_producer_detected'] = True
+                break
+
         # Font & image inventory
         all_fonts = set()
         image_list = []
@@ -90,14 +100,11 @@ def analyze_pdf_structure(pdf_path: Path) -> Tuple[Dict[str, Any], Dict[str, flo
         metadata['error'] = str(e)
 
     # Missing metadata or standard PDF converters are common for official e-documents.
-    if metadata['suspicious_producer_detected'] and metadata['date_inconsistency']:
-        meta_norm_score = 0.65
+    if metadata['suspicious_producer_detected']:
+        meta_norm_score = 0.85
         meta_severity = 'HIGH_ANOMALY'
-    elif metadata['suspicious_producer_detected']:
-        meta_norm_score = 0.40
-        meta_severity = 'MODERATE_ANOMALY'
     elif metadata['date_inconsistency']:
-        meta_norm_score = 0.20
+        meta_norm_score = 0.35
         meta_severity = 'LOW_ANOMALY'
     else:
         meta_norm_score = 0.0

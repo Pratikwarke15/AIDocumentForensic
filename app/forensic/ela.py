@@ -132,16 +132,21 @@ def generate_ela_artifacts(image_np: np.ndarray,
     max_comp_ratio = float(max_comp_area / total_pixels) if total_pixels > 0 else 0.0
     
     # Check if artifacts are scattered uniform recompression vs concentrated splice
-    is_uniform_recompression = (max_comp_ratio < 0.020 and tamper_ratio < 0.070)
-    
-    if num_components == 0 or (tamper_ratio < 0.025 and max_comp_ratio < 0.020):
+    is_uniform_recompression = (max_comp_ratio < 0.020 and tamper_ratio < 0.070 and num_components >= 8)
+    is_concentrated_splice = (max_comp_ratio >= 0.030 or (max_comp_ratio >= 0.015 and num_components <= 5 and tamper_ratio >= 0.015))
+
+    if num_components == 0 or (tamper_ratio < 0.020 and max_comp_ratio < 0.015):
         ela_norm_score = round(tamper_ratio * 4.0, 3)
         ela_severity = 'NORMAL'
-    elif is_uniform_recompression or (tamper_ratio < 0.055 and max_comp_ratio < 0.035):
+    elif is_uniform_recompression or (tamper_ratio < 0.045 and max_comp_ratio < 0.025):
         # Uniform minor edge artifacts typical for scanned, photographed, or recompressed authentic documents
         ela_norm_score = round(min(0.15 + tamper_ratio * 3.5, 0.35), 3)
         ela_severity = 'LOW_ANOMALY'
-    elif tamper_ratio < 0.090 or max_comp_ratio < 0.060:
+    elif is_concentrated_splice or (tamper_ratio >= 0.070 and max_comp_ratio >= 0.040):
+        # Concentrated modified patch or high overall discrepancy
+        ela_norm_score = round(min(0.70 + tamper_ratio * 3.0, 1.0), 3)
+        ela_severity = 'HIGH_ANOMALY'
+    elif tamper_ratio < 0.070 and max_comp_ratio < 0.040:
         # Noticeable variation, warrants review
         ela_norm_score = round(min(0.40 + tamper_ratio * 3.0, 0.65), 3)
         ela_severity = 'MODERATE_ANOMALY'

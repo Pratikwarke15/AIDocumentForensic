@@ -622,14 +622,14 @@ def build_dataset():
         auth_filename = f"AUTH_{doc_slug}.jpg"
         auth_path = AUTH_DIR / auth_filename
         
-        # Save authentic sample with diverse realistic JPEG quality (Q80 to Q94)
-        qual = random.choice([80, 84, 88, 92])
+        # Save authentic sample with diverse realistic JPEG quality (Q82 to Q94)
+        qual = random.choice([82, 86, 90, 94])
         if random.random() < 0.45:
             exif_auth = rec['image'].getexif()
             exif_auth[0x0131] = random.choice([
                 'HP ScanJet Pro 3500 f1',
                 'Canon CanoScan LiDE 400',
-                'Adobe Acrobat Pro 2020'
+                'Epson Perfection V39'
             ])
             rec['image'].save(auth_path, 'JPEG', quality=qual, exif=exif_auth)
         else:
@@ -661,7 +661,7 @@ def build_dataset():
         manip_path = MANIP_DIR / manip_filename
         mask_path = MASK_DIR / mask_filename
 
-        m_qual = random.choice([88, 90, 92, 94])
+        m_qual = random.choice([82, 86, 90, 94])
         if random.random() < 0.45:
             exif_m = manip_img.getexif()
             exif_m[0x0131] = random.choice([

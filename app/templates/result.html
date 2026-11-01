@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Verification Results: {{ document.document_number }} - AI Forensics{% endblock %}
+{% block title %}Verification Results: {{ document.document_number }} - Document Verification System{% endblock %}
 
 {% block content %}
 <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -62,7 +62,7 @@
             {{ signals.get('authenticity_confidence', verification.confidence)|round(1) }}%
         </div>
         <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
-            Multi-Signal AI Consensus (Layer B)
+            Multi-Signal Forensic Consensus (Layer B)
         </div>
     </div>
 
@@ -100,7 +100,7 @@
     <strong>💡 Understanding Verification Metrics:</strong>
     <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
         <li><strong>Layer A (Original Document Match):</strong> Cryptographic and identity check against official records in the verification registry. Yields <strong>100.0%</strong> when document record and content match exactly, <strong>0.0%</strong> on data mismatch, or <strong>N/A</strong> if unrecorded.</li>
-        <li><strong>Layer B (Authenticity Confidence &amp; Manipulation Risk):</strong> Probabilistic AI forensic analysis (ELA, Noise, DCT, Copy-Move, Random Forest). Natural sensor noise and scanning variations mean statistical models output between <strong>80%–98%</strong> confidence on authentic documents, rather than an arbitrary 100%, unless an identical reference copy is confirmed.</li>
+        <li><strong>Layer B (Authenticity Confidence &amp; Manipulation Risk):</strong> Multi-signal digital forensic analysis (ELA, Noise, DCT, Copy-Move, and Statistical Classifier). Natural sensor noise and scanning variations mean statistical models output between <strong>80%–98%</strong> confidence on authentic documents, rather than an arbitrary 100%, unless an identical reference copy is confirmed.</li>
     </ul>
 </div>
 
@@ -145,10 +145,10 @@
         </div>
     </div>
 
-    <!-- CARD 2: AI FORENSIC ANALYSIS -->
+    <!-- CARD 2: DIGITAL FORENSIC ANALYSIS -->
     <div class="verdict-card" style="border-top: 5px solid {{ '#16a34a' if verification.forensic_status == 'AUTHENTIC' else ('#dc2626' if verification.forensic_status == 'POTENTIALLY MANIPULATED' else '#d97706') }};">
         <div class="verdict-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>CARD 2: AI FORENSIC ANALYSIS</span>
+            <span>CARD 2: DIGITAL FORENSIC ANALYSIS</span>
             {% set f_status = verification.forensic_status %}
             <span class="badge {{ 'badge-success' if f_status == 'AUTHENTIC' else ('badge-danger' if f_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}" style="font-size: 0.85rem; padding: 0.4rem 0.65rem;">
                 {{ signals.get('display_status') or ('AUTHENTIC / LOW FORENSIC RISK' if f_status == 'AUTHENTIC' else ('POTENTIALLY MANIPULATED' if f_status == 'POTENTIALLY MANIPULATED' else 'REVIEW REQUIRED / INCONCLUSIVE')) }}

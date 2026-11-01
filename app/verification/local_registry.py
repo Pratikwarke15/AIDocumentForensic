@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import datetime
 import shutil
@@ -103,9 +103,18 @@ class LocalRegistryProvider(VerificationProvider):
                         'record': record_date_str
                     }
 
+            if mismatched_fields:
+                status = "MISMATCH"
+                matched = False
+                message = f"Document number located in registry, but {len(mismatched_fields)} field(s) mismatched official registry record ({', '.join(mismatched_fields.keys())})."
+            else:
+                status = "VERIFIED"
+                matched = True
+                message = "Record verified successfully against the local verification registry."
+
             return RecordVerificationResult(
-                status="VERIFIED",
-                matched=True,
+                status=status,
+                matched=matched,
                 record_id=matched_record.record_id,
                 document_number=matched_record.document_number,
                 document_type=matched_record.document_type,
@@ -115,7 +124,7 @@ class LocalRegistryProvider(VerificationProvider):
                 reference_file=matched_record.reference_file,
                 matched_fields=matched_fields,
                 mismatched_fields=mismatched_fields,
-                message="Record verified successfully against the local verification registry.",
+                message=message,
                 source="Local Verification Registry (Phase 1)",
                 is_live_government_source=False
             )
