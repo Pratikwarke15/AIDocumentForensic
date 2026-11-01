@@ -202,8 +202,12 @@ body {
 .btn-secondary:hover { background: #f8fafc; color: var(--navy); }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { background: #b91c1c; }
+.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-success:hover { background: #15803d; }
 .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
 .btn-lg { padding: 0.75rem 1.75rem; font-size: 1rem; }
+.badge-primary { background: #dbeafe; color: #1e40af; }
+.badge-light   { background: #f1f5f9; color: #334155; }
 
 /* Forms */
 .form-group {

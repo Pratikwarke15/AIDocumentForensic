@@ -335,85 +335,112 @@ def aggregate_forensic_evidence(rf_prediction: int,
     # -------------------------------------------------------------
     # 3-Pillar Scoring Integration
     # -------------------------------------------------------------
+    # Per spec: Score = (0.35 * Template) + (0.35 * Registry) + (0.30 * Forensics)
     t_score = float(template_score)
     r_status = getattr(record_verification, 'status', 'NOT CHECKED') if record_verification else 'NOT CHECKED'
+
     if r_status == 'VERIFIED':
         r_score = 100.0
     elif r_status == 'MISMATCH':
         r_score = 0.0
-        indicators.insert(0, "Registry Integrity: Document number matched, but citizen details mismatched official record.")
+        indicators.insert(0, "Registry Integrity: Document number exists in official registry, but citizen name/details mismatched — Identity fraud flagged.")
     elif r_status == 'RECORD NOT FOUND':
         r_score = 45.0
-        indicators.append("Registry Integrity: Document identifier was not located in database (-15% confidence deduction).")
+        indicators.append("Registry Integrity: Document identifier not found in official database. Authenticity score deducted accordingly.")
     else:
         r_score = 50.0
 
     f_score = round(max(100.0 - weighted_score, 0.0), 1)
     composite_auth_score = round((0.35 * t_score) + (0.35 * r_score) + (0.30 * f_score), 1)
 
+    # ──────────────────────────────────────────────────────────────
+    # Spec Verdict Decision Engine (strict thresholds)
+    #  MANIPULATED  : score < 50% OR registry MISMATCH OR tamper_ratio >= 0.35
+    #  AUTHENTIC    : score >= 75% AND registry VERIFIED AND tamper_ratio < 0.20
+    #  INCONCLUSIVE : everything else
+    # ──────────────────────────────────────────────────────────────
+    tamper_ratio_for_verdict = float(features.get('tamper_ratio', ela_tamper_ratio))
+
     if r_status == 'MISMATCH':
+        # Hard flag — registry data mismatch is definitive identity fraud indicator
         status = "POTENTIALLY MANIPULATED"
         display_status = "REGISTRY DATA MISMATCH & SUSPECTED FORGERY"
         confidence = 92.0
         explanation = (
             "The document number exists in the official registry, but the holder name or critical fields on the "
-            "uploaded document do not match the registered citizen record, indicating identity tampering or forged credentials."
+            "submitted document do not match the registered citizen record. This indicates identity tampering or forged credentials."
         )
 
-    elif has_tampering_consensus:
+    elif (composite_auth_score < 50.0) or (tamper_ratio_for_verdict >= 0.35) or has_tampering_consensus:
         status = "POTENTIALLY MANIPULATED"
-        display_status = "POTENTIALLY MANIPULATED"
-        confidence = round(min(max(p_manip * 100.0, weighted_score, 80.0), 98.0), 1)
+        if tamper_ratio_for_verdict >= 0.35:
+            display_status = "POTENTIALLY MANIPULATED — HIGH TAMPER RATIO"
+        elif has_tampering_consensus:
+            display_status = "POTENTIALLY MANIPULATED"
+        else:
+            display_status = "POTENTIALLY MANIPULATED — LOW AUTHENTICITY SCORE"
+        confidence = round(min(max(p_manip * 100.0, weighted_score, 70.0), 98.0), 1)
         if copymove_count >= 1:
             explanation = (
                 f"Definitive copy-move forgery detected: {int(copymove_count)} geometrically verified duplicate "
                 "region cluster(s) identified with affine consistency across the document."
             )
+        elif r_status == 'RECORD NOT FOUND' and composite_auth_score < 50.0:
+            explanation = (
+                "Document is not recorded in the official registry and the forensic analysis score is below the "
+                "authentication threshold. The document cannot be certified as authentic."
+            )
         elif ela_sev == 'HIGH_ANOMALY':
             explanation = (
                 "Severe Error Level Analysis (ELA) discrepancy detected across document content, "
-                "indicating localized multi-compression digital splicing."
+                "indicating localized multi-compression digital splicing or forged text insertion."
             )
         elif meta_sev == 'HIGH_ANOMALY':
             explanation = (
-                "Suspicious document metadata or structural footprint detected (e.g. mobile scanner wrapper, "
-                "document editing software, or modified binary structure) indicating non-original production."
+                "Suspicious document metadata footprint detected (e.g. Photoshop/GIMP/Canva editing tags, "
+                "scanner wrapper, or modified binary structure) indicating non-original production."
             )
         else:
             explanation = (
-                "Multiple independent forensic indicators (forensic classifier and computer vision signals) "
-                "provide corroborating evidence of localized digital manipulation or document alteration."
+                f"Combined 3-pillar authenticity score ({composite_auth_score:.1f}%) is below the minimum "
+                "threshold for certification. Multiple forensic indicators corroborate document manipulation."
             )
 
-    elif is_clean_authentic:
+    elif composite_auth_score >= 75.0 and r_status == 'VERIFIED' and tamper_ratio_for_verdict < 0.20 and is_clean_authentic:
         status = "AUTHENTIC"
-        if r_status == 'VERIFIED':
-            display_status = "AUTHENTIC / VERIFIED ORIGINAL DOCUMENT"
-            confidence = round(min(max(composite_auth_score, 88.0), 98.0), 1)
-            explanation = (
-                "The document exhibits uniform forensic traits across all physical imaging domains "
-                "(ELA, noise consistency, compression grid) and matches the verified citizen record in the official registry."
-            )
-        else:
-            display_status = "AUTHENTIC FILE (RECORD UNVERIFIED IN REGISTRY)"
-            confidence = round(min(max(composite_auth_score, 65.0), 85.0), 1)
-            explanation = (
-                "The document exhibits uniform physical forensic traits and adheres to official template standards. "
-                "However, the document number was not located in the local registry database (authenticity confidence adjusted accordingly)."
-            )
+        display_status = "AUTHENTIC / VERIFIED ORIGINAL DOCUMENT"
+        confidence = round(min(max(composite_auth_score, 88.0), 98.0), 1)
+        explanation = (
+            "The document exhibits uniform forensic traits across all physical imaging domains "
+            "(ELA, noise consistency, compression grid) and exactly matches the verified citizen record in the official registry."
+        )
         if not indicators:
             indicators.append("Digital forensic characteristics are consistent with an authentic original document.")
             indicators.append("No anomalous ELA, compression, noise, or copy-move artifacts detected.")
+            indicators.append(f"Official registry record verified: citizen data matches across all checked fields.")
+
+    elif composite_auth_score >= 75.0 and r_status != 'MISMATCH' and tamper_ratio_for_verdict < 0.20 and is_clean_authentic:
+        status = "AUTHENTIC"
+        display_status = "AUTHENTIC FILE (RECORD UNVERIFIED IN REGISTRY)"
+        confidence = round(min(max(composite_auth_score, 65.0), 84.0), 1)
+        explanation = (
+            "The document passes forensic analysis and adheres to official template standards. "
+            "However, the document number was not matched in the local registry database — "
+            "authenticity confidence is reduced accordingly. Upload the relevant Excel records to improve accuracy."
+        )
+        if not indicators:
+            indicators.append("Digital forensic characteristics are consistent with an authentic original document.")
+            indicators.append("Registry verification was not possible: document number not in local database.")
 
     else:
-        # Ambiguous evidence or isolated anomaly without conclusive multi-signal agreement
+        # Intermediate — insufficient evidence for definitive verdict
         status = "REVIEW REQUIRED"
-        display_status = "REVIEW REQUIRED / INCONCLUSIVE"
-        confidence = round(min(max(55.0 + abs(0.5 - p_manip) * 35.0, 55.0), 74.0), 1)
+        display_status = "INCONCLUSIVE — MANUAL REVIEW REQUIRED"
+        confidence = round(min(max(composite_auth_score, 50.0), 72.0), 1)
         explanation = (
-            "Forensic analysis detected isolated domain anomalies or borderline statistical metrics. "
-            "The physical evidence is insufficient to conclude digital manipulation, but "
-            "secondary visual review is recommended."
+            f"The combined 3-pillar score ({composite_auth_score:.1f}%) falls in the inconclusive range (50–75%). "
+            "Forensic analysis detected isolated anomalies that are insufficient to conclusively confirm "
+            "manipulation, but the document cannot be fully certified as authentic without further review."
         )
 
     # -------------------------------------------------------------
