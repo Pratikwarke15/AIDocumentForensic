@@ -1,0 +1,94 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Model Management - AI Forensics Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <span class="badge badge-primary">MACHINE LEARNING CORE</span>
+            <span style="font-size: 0.8rem; color: #64748b;">Directory: <code>/models/</code></span>
+        </div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Model Management & Calibration</h1>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.model_management') }}">
+        <input type="hidden" name="action" value="retrain">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Retrain Random Forest classifier on latest training dataset?');">
+            🔄 Retrain Model Artifact
+        </button>
+    </form>
+</div>
+
+<!-- Active Model Status Card -->
+<div class="card" style="border-left: 5px solid {{ '#16a34a' if is_trained else '#dc2626' }};">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+            <span class="badge {{ 'badge-success' if is_trained else 'badge-danger' }}" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+                {{ 'ACTIVE & LOADED' if is_trained else 'UNTRAINED' }}
+            </span>
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.35rem;">
+                {{ metadata.get('algorithm', 'RandomForestClassifier') }} ({{ metadata.get('model_version', 'v1.0') }})
+            </h2>
+        </div>
+        <div style="font-size: 0.85rem; color: #64748b;">
+            Trained Date: <strong>{{ metadata.get('training_date', 'N/A') }}</strong>
+        </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    {% set m = metadata.get('metrics', {}) %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1.25rem;">
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">ACCURACY</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #16a34a;">{{ (m.get('accuracy', 0.0) * 100)|round(2) }}%</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">PRECISION</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #0284c7;">{{ (m.get('precision', 0.0) * 100)|round(2) }}%</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">RECALL</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #0284c7;">{{ (m.get('recall', 0.0) * 100)|round(2) }}%</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">F1 SCORE</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #16a34a;">{{ (m.get('f1_score', 0.0) * 100)|round(2) }}%</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">ROC-AUC</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">{{ m.get('roc_auc', 1.0)|round(4) }}</div>
+        </div>
+        <div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">DATASET SAMPLES</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">{{ metadata.get('dataset_samples', 0) }}</div>
+        </div>
+    </div>
+
+    <!-- Top Features -->
+    <h3 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">Top 8 Feature Importances (Gini Impurity)</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.5rem;">
+        {% for tf in metadata.get('top_features', [])[:8] %}
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.5rem 0.75rem; display: flex; justify-content: space-between; font-size: 0.82rem;">
+            <code>{{ tf.feature }}</code>
+            <span style="font-weight: 700; color: #0284c7;">{{ (tf.importance * 100)|round(2) }}%</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Feature Schema Card -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Feature Schema ({{ feature_names|length }} Dimensions)</h3>
+        <span class="badge badge-secondary"><code>feature_schema.json</code></span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+        {% for fn in feature_names %}
+            <span style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace; font-size: 0.75rem;">
+                {{ loop.index }}. {{ fn }}
+            </span>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

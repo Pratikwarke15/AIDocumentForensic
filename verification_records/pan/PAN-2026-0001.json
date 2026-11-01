@@ -1,0 +1,11 @@
+{
+    "record_id": "PAN-2026-0001",
+    "document_type": "PAN",
+    "document_number": "ABCDE1234F",
+    "document_name": "Permanent Account Number Card",
+    "holder_name": "Priya Verma",
+    "issue_date": "2023-11-20",
+    "issuing_authority": "Income Tax Department (Demo Registry)",
+    "status": "VERIFIED",
+    "reference_file": "PAN-2026-0001.pdf"
+}

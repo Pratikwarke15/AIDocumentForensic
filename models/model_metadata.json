@@ -1,0 +1,88 @@
+{
+    "model_version": "v2.0-rf-diverse-govdocs",
+    "algorithm": "RandomForestClassifier",
+    "training_date": "2026-09-28T10:48:56.152465",
+    "dataset_summary": {
+        "total_samples": 102,
+        "authentic_samples": 51,
+        "manipulated_samples": 51,
+        "train_samples": 70,
+        "val_samples": 14,
+        "test_samples": 18
+    },
+    "hyperparameters": {
+        "n_estimators": 150,
+        "max_depth": 10,
+        "min_samples_split": 3,
+        "class_weight": "balanced",
+        "random_state": 42
+    },
+    "test_metrics": {
+        "accuracy": 0.8333333333333334,
+        "precision": 0.875,
+        "recall": 0.7777777777777778,
+        "f1_score": 0.8235294117647058,
+        "roc_auc": 0.9135802469135803,
+        "confusion_matrix": [
+            [
+                8,
+                1
+            ],
+            [
+                2,
+                7
+            ]
+        ]
+    },
+    "top_features": [
+        {
+            "feature": "ela_std",
+            "importance": 0.10575044530508712
+        },
+        {
+            "feature": "ela_mean",
+            "importance": 0.097685975784674
+        },
+        {
+            "feature": "ela_var",
+            "importance": 0.07798040453911072
+        },
+        {
+            "feature": "metadata_editing_software_flag",
+            "importance": 0.07786186633817295
+        },
+        {
+            "feature": "ela_p99",
+            "importance": 0.07637019676592267
+        },
+        {
+            "feature": "ela_max",
+            "importance": 0.05234756941731098
+        },
+        {
+            "feature": "ela_skewness",
+            "importance": 0.04346046823941801
+        },
+        {
+            "feature": "sharpness_laplacian_var",
+            "importance": 0.04343940971865732
+        },
+        {
+            "feature": "color_channel_disparity",
+            "importance": 0.04103769773165599
+        },
+        {
+            "feature": "ela_kurtosis",
+            "importance": 0.03832127281299446
+        },
+        {
+            "feature": "dct_energy_ratio",
+            "importance": 0.036761487742075404
+        },
+        {
+            "feature": "ela_tamper_ratio",
+            "importance": 0.031232303955495658
+        }
+    ],
+    "format_notes": "Model is serialized as scikit-learn RandomForestClassifier via joblib (.joblib/.pkl). PyTorch (.pt) is not used because this is a tabular ensemble tree model."
+}

@@ -1,0 +1,69 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}How It Works - Academic Methodology & Forensics{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem; text-align: center;">
+        <h1 style="font-size: 2.2rem; font-weight: 800; color: #0f172a;">Academic Methodology & Technical Pipeline</h1>
+        <p style="color: #475569; font-size: 1rem; margin-top: 0.5rem;">
+            Based on the academic paper: <em>"SpliceFound: A Web-Based Image Splicing Detection Tool Using Error Level Analysis (ELA)"</em> and enhanced with trained Random Forest classification for document security.
+        </p>
+    </div>
+
+    <!-- Section 1: ELA -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">1. Error Level Analysis (ELA) Pipeline</h3>
+            <span class="badge badge-success">Primary Signal</span>
+        </div>
+        <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1rem;">
+            When a JPEG image is saved, the compression algorithm introduces loss in 8x8 pixel blocks based on a quantization table. 
+            If an authentic document is saved once, all regions exhibit uniform error rates. However, if a fraudster modifies a number or pastes a name, that modified patch undergoes a different compression cycle.
+        </p>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border-left: 4px solid #0284c7; font-size: 0.85rem; color: #1e293b;">
+            <strong>The ELA Algorithm:</strong><br/>
+            1. Standardize image to max 800x800 dimensions.<br/>
+            2. Recompress image in-memory at JPEG quality factor <strong>Q = 95</strong>.<br/>
+            3. Compute absolute difference: <code>Δ = |I_original - I_recompressed|</code>.<br/>
+            4. Amplify differences by <strong>Scale Factor S = 15.0</strong>.<br/>
+            5. Map amplified difference to Jet color spectrum (Blue = Low error, Red = High anomaly).<br/>
+            6. Apply thresholding and morphological filtering to localize suspicious contours.
+        </div>
+    </div>
+
+    <!-- Section 2: Why Random Forest -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">2. Machine Learning Enhancement: Beyond Fixed Thresholds</h3>
+            <span class="badge badge-primary">Core Research Improvement</span>
+        </div>
+        <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1rem;">
+            Prior systems (such as baseline SpliceFound) rely on a single empirical threshold (e.g. 0.02 tamper pixel ratio) to classify an image as forged. In real-world government documents, variations in scanning resolution and background noise make a single threshold unreliable.
+        </p>
+        <p style="color: #334155; font-size: 0.92rem; line-height: 1.6;">
+            Our system replaces the rigid threshold with a <strong>Random Forest Classifier</strong> trained on 28+ numerical features:
+        </p>
+        <ul style="font-size: 0.85rem; color: #334155; margin-left: 1.5rem; line-height: 1.8;">
+            <li>Statistical moments: Mean, Standard Deviation, Variance, Skewness, Kurtosis.</li>
+            <li>Percentiles: 75th, 90th, 95th, and 99th percentiles of error distribution.</li>
+            <li>Localization metrics: Connected component count, max component area ratio, component density.</li>
+            <li>Multi-signal corroboration: Local noise variance disparity, JPEG blockiness discontinuity, ORB copy-move duplication clusters, and sharpness disparity.</li>
+        </ul>
+    </div>
+
+    <!-- Section 3: Dual Layer Verification -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">3. Local Verification Registry (Phase 1)</h3>
+            <span class="badge badge-secondary">Record Verification</span>
+        </div>
+        <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1rem;">
+            In Phase 1, the platform operates a local simulation registry stored in <code>/verification_records/</code> with subfolders for Aadhaar, PAN, Marksheets, Certificates, Caste, Income, and Domicile documents. The database maintains a fast indexed cache that automatically synchronizes with folder changes.
+        </p>
+        <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1rem; border-radius: 6px; font-size: 0.85rem; color: #92400e;">
+            <strong>Ethical & Legal Notice:</strong> Missing records from the local registry result in <em>"RECORD NOT FOUND"</em>, indicating absence from the prototype demonstration database rather than conclusive invalidation of authentic government documents.
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Verification Registry Management - Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <span class="badge badge-primary">PHASE 1 SOURCE OF TRUTH</span>
+            <span style="font-size: 0.8rem; color: #64748b;">Directory: <code>/verification_records/</code></span>
+        </div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Local Verification Registry</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">
+            Active Records: <strong>{{ records|length }}</strong> • Inactive / Pruned: <strong>{{ inactive_count }}</strong>
+        </p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+        <form method="POST" action="{{ url_for('registry.sync_folder') }}" style="display: inline;">
+            <button type="submit" class="btn btn-secondary" title="Scan disk directory and update database cache">
+                🔄 SYNC FOLDER
+            </button>
+        </form>
+        <button type="button" class="btn btn-primary" data-modal-target="addRecordModal">
+            ➕ ADD RECORD
+        </button>
+    </div>
+</div>
+
+<!-- Notice banner -->
+<div class="alert alert-info">
+    <div>
+        <strong>Two-Way Synchronization:</strong> Human-editable <code>.json</code> files in <code>/verification_records/&lt;category&gt;/</code> are the authoritative source of truth. Adding, editing, or deleting files in that folder updates the fast database cache whenever <strong>SYNC FOLDER</strong> is executed.
+    </div>
+</div>
+
+<!-- Registry Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Record ID</th>
+                    <th>Document Number</th>
+                    <th>Category Type</th>
+                    <th>Holder Name</th>
+                    <th>Issue Date</th>
+                    <th>Issuing Authority</th>
+                    <th>Reference File</th>
+                    <th>Last Synced</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td><code>{{ r.record_id }}</code></td>
+                    <td><strong>{{ r.document_number }}</strong></td>
+                    <td><span class="badge badge-secondary">{{ r.document_type }}</span></td>
+                    <td>{{ r.holder_name }}</td>
+                    <td>{{ r.issue_date or 'N/A' }}</td>
+                    <td style="font-size: 0.8rem;">{{ r.issuing_authority }}</td>
+                    <td style="font-size: 0.8rem; color: #0284c7;">{{ r.reference_file or 'None' }}</td>
+                    <td style="font-size: 0.75rem; color: #64748b;">{{ r.last_synced_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.35rem;">
+                            <form method="POST" action="{{ url_for('registry.delete_record', record_id=r.record_id) }}" onsubmit="return confirm('Delete this record file from disk and database?');">
+                                <button type="submit" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD RECORD MODAL -->
+<div id="addRecordModal" class="modal-overlay">
+    <div class="modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Add Registry Record</h3>
+            <button type="button" data-modal-close style="border: none; background: none; font-size: 1.25rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('registry.add_record') }}" enctype="multipart/form-data">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label" for="record_id">Record ID *</label>
+                    <input type="text" name="record_id" id="record_id" class="form-control" required placeholder="e.g. CERT-2026-0005">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="document_type">Document Category *</label>
+                    <select name="document_type" id="document_type" class="form-control" required>
+                        {% for dt in document_types %}
+                            <option value="{{ dt }}">{{ dt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="document_number">Document Number *</label>
+                <input type="text" name="document_number" id="document_number" class="form-control" required placeholder="e.g. MH/INC/2026/0005">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label" for="holder_name">Holder Name *</label>
+                    <input type="text" name="holder_name" id="holder_name" class="form-control" required placeholder="Full Name">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="issue_date">Issue Date</label>
+                    <input type="date" name="issue_date" id="issue_date" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="issuing_authority">Issuing Authority *</label>
+                <input type="text" name="issuing_authority" id="issuing_authority" class="form-control" required placeholder="e.g. Revenue Department, Govt of Maharashtra">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="reference_file">Upload Reference Document (Optional PDF/Image)</label>
+                <input type="file" name="reference_file" id="reference_file" class="form-control">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" data-modal-close class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save & Sync Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

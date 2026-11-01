@@ -1,0 +1,164 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Search Document - AI Forensics Registry{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px; margin: 1rem auto;">
+    <div style="margin-bottom: 1.5rem;">
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Document Registry Search</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Search for official document numbers in the local verification registry</p>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card">
+        <form method="GET" action="{{ url_for('search.search_documents') }}">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="document_number">Document Number *</label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" value="{{ doc_number }}" required placeholder="e.g. MH/INC/2026/0001 or ABCDE1234F">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="document_type">Document Type (Filter)</label>
+                    <select name="document_type" id="document_type" class="form-control">
+                        <option value="">All Categories</option>
+                        {% for dt in document_types %}
+                            <option value="{{ dt }}" {{ 'selected' if dt == doc_type else '' }}>{{ dt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="holder_name">Holder Name (Optional)</label>
+                    <input type="text" name="holder_name" id="holder_name" class="form-control" value="{{ holder_name }}" placeholder="Filter by name">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="issue_date">Issue Date (Optional)</label>
+                    <input type="date" name="issue_date" id="issue_date" class="form-control" value="{{ issue_date }}">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="padding-left: 1.75rem; padding-right: 1.75rem;">
+                🔍 Search Registry
+            </button>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    {% if searched %}
+        {% if registry_match and registry_match.matched %}
+            <!-- RECORD FOUND -->
+            <div class="card" style="border-left: 5px solid #16a34a;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <span class="badge badge-success" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+                            ✓ VERIFIED RECORD FOUND
+                        </span>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-top: 0.5rem;">
+                            {{ registry_match.document_number }}
+                        </h2>
+                    </div>
+                    <div style="text-align: right;">
+                        <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-primary btn-sm">
+                            Run Forensic Verification
+                        </a>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                    <div>
+                        <div style="color: #64748b;">Document Type:</div>
+                        <div style="font-weight: 700;">{{ registry_match.document_type }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b;">Holder Name:</div>
+                        <div style="font-weight: 700;">{{ registry_match.holder_name }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b;">Issue Date:</div>
+                        <div style="font-weight: 700;">{{ registry_match.issue_date or 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b;">Issuing Authority:</div>
+                        <div style="font-weight: 700;">{{ registry_match.issuing_authority }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b;">Previous Verifications:</div>
+                        <div style="font-weight: 700;">{{ verification_history|length }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #64748b;">Last Verification:</div>
+                        <div style="font-weight: 700;">
+                            {{ latest_verification.timestamp.strftime('%Y-%m-%d %H:%M') if latest_verification else 'Never' }}
+                        </div>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.75rem; font-style: italic;">
+                    * Record matched in local registry: <code>{{ registry_match.record_id }}.json</code>.
+                </p>
+            </div>
+        {% else %}
+            <!-- RECORD NOT FOUND -->
+            <div class="card" style="border-left: 5px solid #dc2626;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <span class="badge badge-danger" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+                        RECORD NOT FOUND
+                    </span>
+                    <span style="font-weight: 700; font-size: 1.15rem; color: #0f172a;">{{ doc_number }}</span>
+                </div>
+                <p style="color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    This document number does not exist in the current local verification registry.
+                </p>
+                <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">
+                    <em>Based on local/demo verification registry — not a live government database.</em>
+                </p>
+                <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-secondary btn-sm">
+                    Upload & Test File Forensics Anyway
+                </a>
+            </div>
+        {% endif %}
+
+        <!-- Verification History Table for this Document -->
+        {% if verification_history %}
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-header">
+                    <h3 class="card-title">Past Verification History for {{ doc_number }}</h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Record Status</th>
+                                <th>Forensic Status</th>
+                                <th>Confidence</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in verification_history %}
+                            <tr>
+                                <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td><span class="badge {{ 'badge-success' if v.record_status == 'VERIFIED' else 'badge-danger' }}">{{ v.record_status }}</span></td>
+                                <td><span class="badge {{ 'badge-success' if v.forensic_status == 'AUTHENTIC' else ('badge-danger' if v.forensic_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}">{{ v.forensic_status }}</span></td>
+                                <td style="font-weight: 700;">{{ v.confidence|round(1) }}%</td>
+                                <td>
+                                    <a href="{{ url_for('verify.view_result', v_id=v.id) }}" class="btn btn-sm btn-secondary">View Result</a>
+                                    {% if v.report_path %}
+                                    <a href="{{ url_for('verify.download_report', v_id=v.id) }}" class="btn btn-sm btn-primary">PDF</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

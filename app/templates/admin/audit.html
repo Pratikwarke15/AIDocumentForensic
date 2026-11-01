@@ -1,0 +1,63 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}System Audit Logs - Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">System Audit Trail</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Cryptographic and security log of all sensitive administrative and verification actions</p>
+    </div>
+</div>
+
+<div class="card">
+    {% if logs %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>IP Address</th>
+                        <th>Details Payload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in logs %}
+                    <tr>
+                        <td style="white-space: nowrap; font-size: 0.8rem; color: #64748b;">
+                            {{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </td>
+                        <td>
+                            {% if l.user %}
+                                <strong>{{ l.user.username }}</strong>
+                            {% else %}
+                                <span style="color: #94a3b8;">System</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ l.action }}</span>
+                        </td>
+                        <td>
+                            {% if l.target_type %}
+                                <span style="font-size: 0.8rem;">{{ l.target_type }}: <code>{{ l.target_id }}</code></span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.8rem; color: #64748b;">{{ l.ip_address or 'Local' }}</td>
+                        <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 0.75rem; color: #334155;">
+                            {{ l.details_json or '{}' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="color: #64748b; padding: 1.5rem; text-align: center;">No audit logs recorded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

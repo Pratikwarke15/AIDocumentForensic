@@ -1,0 +1,121 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}User Dashboard - AI Forensics System{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a;">Verification Dashboard</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Overview of document verification attempts and forensic activity</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-primary">
+            <span>➕</span> Upload & Verify
+        </a>
+        <a href="{{ url_for('search.search_documents') }}" class="btn btn-secondary">
+            <span>🔎</span> Search Document
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid #0284c7;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Verifications</div>
+        <div style="font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0.25rem 0;">{{ total_verifications }}</div>
+        <div style="font-size: 0.75rem; color: #64748b;">All processed documents</div>
+    </div>
+
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid #16a34a;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Verified Records</div>
+        <div style="font-size: 2rem; font-weight: 800; color: #16a34a; margin: 0.25rem 0;">{{ verified_records }}</div>
+        <div style="font-size: 0.75rem; color: #64748b;">Matched in local registry</div>
+    </div>
+
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid #dc2626;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Potentially Manipulated</div>
+        <div style="font-size: 2rem; font-weight: 800; color: #dc2626; margin: 0.25rem 0;">{{ manipulated_count }}</div>
+        <div style="font-size: 0.75rem; color: #64748b;">Tampering indicators flagged</div>
+    </div>
+
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid #d97706;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Forensically Authentic</div>
+        <div style="font-size: 2rem; font-weight: 800; color: #059669; margin: 0.25rem 0;">{{ authentic_count }}</div>
+        <div style="font-size: 0.75rem; color: #64748b;">Passed all forensic checks</div>
+    </div>
+</div>
+
+<!-- Recent Verifications Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Recent Document Verifications</h3>
+        <a href="{{ url_for('history.timeline') }}" class="btn btn-sm btn-secondary">View Full History</a>
+    </div>
+
+    {% if recent_verifications %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Document Number</th>
+                        <th>Type</th>
+                        <th>Holder Name</th>
+                        <th>Record Status</th>
+                        <th>Forensic Status</th>
+                        <th>Confidence</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in recent_verifications %}
+                    <tr>
+                        <td style="white-space: nowrap; color: #64748b; font-size: 0.8rem;">
+                            {{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('verify.view_result', v_id=v.id) }}" style="font-weight: 700; color: #0284c7; text-decoration: none;">
+                                {{ v.document.document_number }}
+                            </a>
+                        </td>
+                        <td>{{ v.document.document_type }}</td>
+                        <td>{{ v.document.holder_name }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if v.record_status == 'VERIFIED' else 'badge-danger' }}">
+                                {{ v.record_status }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if v.forensic_status == 'AUTHENTIC' else ('badge-danger' if v.forensic_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}">
+                                {{ v.forensic_status }}
+                            </span>
+                        </td>
+                        <td style="font-weight: 700;">
+                            {{ v.confidence|round(1) }}%
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 0.35rem;">
+                                <a href="{{ url_for('verify.view_result', v_id=v.id) }}" class="btn btn-sm btn-secondary" title="View Analysis">
+                                    View
+                                </a>
+                                {% if v.report_path %}
+                                <a href="{{ url_for('verify.download_report', v_id=v.id) }}" class="btn btn-sm btn-primary" title="Download PDF Report">
+                                    PDF
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2.5rem; color: #64748b;">
+            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No document verifications recorded yet.</p>
+            <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">Start by uploading an official certificate or identity document for forensic analysis.</p>
+            <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-primary">Verify First Document</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

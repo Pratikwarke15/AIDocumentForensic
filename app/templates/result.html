@@ -1,0 +1,616 @@
+{% extends 'base.html' %}
+
+{% block title %}Verification Results: {{ document.document_number }} - AI Forensics{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <span class="badge badge-secondary">{{ document.document_type }}</span>
+            <span style="font-size: 0.8rem; color: #64748b;">Verification ID: #{{ verification.id }}</span>
+            <span style="font-size: 0.8rem; color: #64748b;">• {{ verification.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+        </div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">
+            Analysis Dossier: {{ document.document_number }}
+        </h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Holder: <strong>{{ document.holder_name }}</strong> • Total Verification Attempts: <strong>{{ history_count }}</strong></p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('verify.download_report', v_id=verification.id) }}" class="btn btn-primary" target="_blank">
+            📥 Download PDF Forensic Report
+        </a>
+        <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-secondary">
+            🔄 New Verification
+        </a>
+    </div>
+</div>
+
+<!-- 4-Metric Forensic & Registry Summary Dashboard -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <!-- Metric 1: Original Document Match -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.35rem;">
+            🏛️ Original Document Match
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: {{ '#16a34a' if (signals.get('original_document_match') == 100.0 or (signals.get('original_document_match') is none and reg_record.matched)) else ('#dc2626' if (signals.get('original_document_match') == 0.0 or reg_record.status == 'MISMATCH') else '#64748b') }};">
+            {% if signals.get('original_document_match') == 100.0 or (signals.get('original_document_match') is none and reg_record.matched) %}
+                100.0%
+            {% elif signals.get('original_document_match') == 0.0 or reg_record.status == 'MISMATCH' %}
+                0.0%
+            {% else %}
+                N/A
+            {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+            {% if signals.get('original_document_match') == 100.0 or (signals.get('original_document_match') is none and reg_record.matched) %}
+                Exact Registry Record Matched
+            {% elif signals.get('original_document_match') == 0.0 or reg_record.status == 'MISMATCH' %}
+                Registry Hash / Data Mismatch
+            {% else %}
+                Unrecorded in Local Registry
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Metric 2: Authenticity Confidence -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.35rem;">
+            🛡️ Authenticity Confidence
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: {{ '#16a34a' if verification.forensic_status == 'AUTHENTIC' else ('#dc2626' if verification.forensic_status == 'POTENTIALLY MANIPULATED' else '#d97706') }};">
+            {{ signals.get('authenticity_confidence', verification.confidence)|round(1) }}%
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+            Multi-Signal AI Consensus (Layer B)
+        </div>
+    </div>
+
+    <!-- Metric 3: Manipulation Risk Score -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.35rem;">
+            ⚠️ Manipulation Risk Score
+        </div>
+        {% set manip_score = signals.get('manipulation_score', signals.get('risk_score', 0.0)) %}
+        <div style="font-size: 1.6rem; font-weight: 800; color: {{ '#16a34a' if manip_score < 30.0 else ('#dc2626' if manip_score >= 60.0 else '#d97706') }};">
+            {{ manip_score|round(1) }}%
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+            Composite Forgery Indicator
+        </div>
+    </div>
+
+    <!-- Metric 4: Suspicious Region Percentage -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.35rem;">
+            🎯 Suspicious Region Area
+        </div>
+        {% set susp_pct = signals.get('suspicious_region_percentage', (verification.tamper_ratio * 100)|round(2)) %}
+        <div style="font-size: 1.6rem; font-weight: 800; color: {{ '#16a34a' if susp_pct < 1.0 else ('#dc2626' if susp_pct >= 5.0 else '#d97706') }};">
+            {{ susp_pct|round(2) }}%
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+            Anomalous ELA Pixel Ratio
+        </div>
+    </div>
+</div>
+
+<!-- Layer A vs Layer B Educational Clarification Callout -->
+<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 6px; padding: 0.85rem 1.15rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: #166534; line-height: 1.45;">
+    <strong>💡 Understanding Verification Metrics:</strong>
+    <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
+        <li><strong>Layer A (Original Document Match):</strong> Cryptographic and identity check against official records in the verification registry. Yields <strong>100.0%</strong> when document record and content match exactly, <strong>0.0%</strong> on data mismatch, or <strong>N/A</strong> if unrecorded.</li>
+        <li><strong>Layer B (Authenticity Confidence &amp; Manipulation Risk):</strong> Probabilistic AI forensic analysis (ELA, Noise, DCT, Copy-Move, Random Forest). Natural sensor noise and scanning variations mean statistical models output between <strong>80%–98%</strong> confidence on authentic documents, rather than an arbitrary 100%, unless an identical reference copy is confirmed.</li>
+    </ul>
+</div>
+
+<!-- Two-Layer Verification Cards (Prompt Section 18) -->
+<div class="dual-verdict-grid">
+    <!-- CARD 1: RECORD VERIFICATION -->
+    <div class="verdict-card" style="border-top: 5px solid {{ '#16a34a' if verification.record_status == 'VERIFIED' else '#dc2626' }};">
+        <div class="verdict-header" style="display: flex; justify-content: space-between;">
+            <span>CARD 1: DOCUMENT RECORD VERIFICATION</span>
+            <span class="badge {{ 'badge-success' if verification.record_status == 'VERIFIED' else 'badge-danger' }}">{{ verification.record_status }}</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">
+            <strong>Source:</strong> Local Document Verification Registry (Phase 1)
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; font-size: 0.85rem;">
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem; margin-bottom: 0.35rem;">
+                <span style="color: #64748b;">Document Number:</span>
+                <span style="font-weight: 700; color: {{ '#16a34a' if reg_record.matched else '#dc2626' }};">
+                    {{ document.document_number }} ({{ 'FOUND' if reg_record.matched else 'NOT FOUND' }})
+                </span>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem; margin-bottom: 0.35rem;">
+                <span style="color: #64748b;">Category Type:</span>
+                <span>{{ document.document_type }}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem; margin-bottom: 0.35rem;">
+                <span style="color: #64748b;">Registered Holder:</span>
+                <span>{{ reg_record.holder_name or 'N/A' }}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem; margin-bottom: 0.35rem;">
+                <span style="color: #64748b;">Issuing Authority:</span>
+                <span>{{ reg_record.issuing_authority or document.issuing_authority or 'N/A' }}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem;">
+                <span style="color: #64748b;">Registry Reference:</span>
+                <span>{{ reg_record.reference_file or 'None' }}</span>
+            </div>
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem; font-style: italic;">
+            * Based on local/demo verification registry — not a live government database.
+        </div>
+    </div>
+
+    <!-- CARD 2: AI FORENSIC ANALYSIS -->
+    <div class="verdict-card" style="border-top: 5px solid {{ '#16a34a' if verification.forensic_status == 'AUTHENTIC' else ('#dc2626' if verification.forensic_status == 'POTENTIALLY MANIPULATED' else '#d97706') }};">
+        <div class="verdict-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>CARD 2: AI FORENSIC ANALYSIS</span>
+            {% set f_status = verification.forensic_status %}
+            <span class="badge {{ 'badge-success' if f_status == 'AUTHENTIC' else ('badge-danger' if f_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}" style="font-size: 0.85rem; padding: 0.4rem 0.65rem;">
+                {{ signals.get('display_status') or ('AUTHENTIC / LOW FORENSIC RISK' if f_status == 'AUTHENTIC' else ('POTENTIALLY MANIPULATED' if f_status == 'POTENTIALLY MANIPULATED' else 'REVIEW REQUIRED / INCONCLUSIVE')) }}
+            </span>
+        </div>
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">
+            <strong>Forensic Confidence:</strong> <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">{{ verification.confidence|round(1) }}%</span> 
+            <span style="font-size: 0.75rem; color: #64748b;">(Multi-signal consensus & independent evidence agreement)</span>
+        </div>
+
+        <!-- Multi-Signal Severity Badges -->
+        {% set sev = signals.get('severities', {}) %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;">
+            {% macro severity_badge(label, s_val) %}
+                {% if s_val == 'HIGH_ANOMALY' %}
+                    <span class="badge badge-danger">{{ label }}: High Anomaly</span>
+                {% elif s_val == 'MODERATE_ANOMALY' %}
+                    <span class="badge badge-warning">{{ label }}: Moderate Anomaly</span>
+                {% elif s_val == 'LOW_ANOMALY' %}
+                    <span class="badge badge-secondary" style="background: #e2e8f0; color: #334155;">{{ label }}: Low Anomaly</span>
+                {% else %}
+                    <span class="badge badge-success">{{ label }}: Normal</span>
+                {% endif %}
+            {% endmacro %}
+
+            {{ severity_badge('ELA', sev.get('ela', signals.get('signals', {}).get('ela', 'NORMAL'))) }}
+            {{ severity_badge('Noise', sev.get('noise', signals.get('signals', {}).get('noise', 'NORMAL'))) }}
+            {{ severity_badge('Copy-Move', sev.get('copymove', signals.get('signals', {}).get('copymove', 'NORMAL'))) }}
+            {{ severity_badge('Compression', sev.get('compression', signals.get('signals', {}).get('compression', 'NORMAL'))) }}
+            {{ severity_badge('Metadata', sev.get('metadata', signals.get('signals', {}).get('metadata', 'NORMAL'))) }}
+            <span class="badge {{ 'badge-danger' if signals.get('signals', {}).get('random_forest') == 'MANIPULATED' else 'badge-success' }}">
+                ML (RF): {{ signals.get('signals', {}).get('random_forest', 'AUTHENTIC') }} ({{ signals.get('rf_probability', 0.0) }}%)
+            </span>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.65rem 0.85rem; font-size: 0.82rem; color: #334155;">
+            <strong>Forensic Assessment Summary:</strong>
+            <p style="margin: 0.25rem 0 0.5rem 0; line-height: 1.4;">
+                {{ signals.get('explanation') or 'Document analyzed using Error Level Analysis, noise variance, copy-move clustering, and Random Forest classification.' }}
+            </p>
+            {% if signals.get('indicators') %}
+                <div style="font-size: 0.78rem; color: #475569; border-top: 1px dashed #cbd5e1; padding-top: 0.4rem;">
+                    {% for ind in signals.get('indicators')[:2] %}
+                        <div>• {{ ind }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ANALYSIS CONSISTENCY CALLOUT -->
+{% set consistency = signals.get('analysis_consistency', {}) %}
+<div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid {{ '#16a34a' if consistency.get('is_consistent', True) else '#0284c7' }}; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.5rem;">
+        <span style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">
+            🔬 Analysis Consistency & Cross-Domain Consensus
+        </span>
+        <span class="badge {{ 'badge-success' if consistency.get('is_consistent', True) else 'badge-secondary' }}">
+            {{ 'FULL CONSENSUS' if consistency.get('is_consistent', True) else 'CROSS-DOMAIN HARMONIZED' }}
+        </span>
+    </div>
+    <div style="font-size: 0.83rem; color: #475569; line-height: 1.45;">
+        <span><strong>ML Model:</strong> {{ consistency.get('ml_classification', 'AUTHENTIC') }} ({{ consistency.get('ml_probability', 0.0) }}% tamper probability)</span> • 
+        <span><strong>ELA Domain:</strong> {{ consistency.get('ela_result', 'NORMAL') }}</span> • 
+        <span><strong>Sensor Noise:</strong> {{ consistency.get('noise_result', 'NORMAL') }}</span> • 
+        <span><strong>Copy-Move:</strong> {{ consistency.get('copymove_result', 'NORMAL') }}</span> • 
+        <span><strong>Compression Grid:</strong> {{ consistency.get('compression_result', 'NORMAL') }}</span>
+        <p style="margin: 0.4rem 0 0 0; color: #334155; font-style: italic;">
+            "{{ consistency.get('explanation') or signals.get('explanation', 'Forensic signals corroborated across all inspection layers.') }}"
+        </p>
+    </div>
+</div>
+
+<!-- FINAL COMBINED ASSESSMENT BANNER -->
+<div class="final-banner">
+    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem;">
+        Combined System Assessment
+    </div>
+    <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">
+        {{ verification.final_status }}
+    </div>
+    <p style="font-size: 0.85rem; color: #475569; margin: 0;">
+        Synthesizes authoritative registry presence (Layer A: Local Demo Registry) with pixel-level mathematical forensics (Layer B). 
+        <em>These are automated screening indicators, not legal proof.</em>
+    </p>
+</div>
+
+<!-- TABBED DETAILED EVIDENCE SECTIONS -->
+<div class="card tabs-container">
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="tab-visual">🖼️ Visual Evidence Plates</button>
+        <button class="tab-btn" data-tab="tab-features">📊 28+ Numerical Features</button>
+        <button class="tab-btn" data-tab="tab-metadata">🔒 Cryptography & Metadata</button>
+        <button class="tab-btn" data-tab="tab-ocr">🔤 OCR & Typography</button>
+        <button class="tab-btn" data-tab="tab-registry">🏛️ Registry Details & History</button>
+        <button class="tab-btn" data-tab="tab-debug">⚙️ Developer / Debug Diagnostics</button>
+    </div>
+
+    <!-- TAB 1: VISUAL EVIDENCE -->
+    <div id="tab-visual" class="tab-content active">
+        <div class="evidence-grid">
+            <!-- 1. Original Document -->
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% if document.original_file_path.endswith(('jpg', 'jpeg', 'png')) %}
+                        <img src="/storage/originals/{{ document.sha256 }}.{{ document.original_file_path.rsplit('.', 1)[-1] }}" alt="Original Document" class="evidence-img">
+                    {% else %}
+                        {% set high_base = forensic_res.highlighted_path.rsplit('/', 1)[-1] if '/' in forensic_res.highlighted_path else forensic_res.highlighted_path.rsplit('\\', 1)[-1] %}
+                        {% set std_filename = high_base.replace('_highlighted.jpg', '_std.jpg') %}
+                        <img src="/storage/processed/{{ std_filename }}" alt="PDF Render" class="evidence-img">
+                    {% endif %}
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">1. Standardized Document (I₀)</div>
+                    <div class="evidence-desc">Normalized analysis copy preserved at 800x800 resolution.</div>
+                </div>
+            </div>
+
+            <!-- 2. ELA Heat Map -->
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% set ela_filename = forensic_res.ela_path.rsplit('/', 1)[-1] if '/' in forensic_res.ela_path else forensic_res.ela_path.rsplit('\\', 1)[-1] %}
+                    <img src="/storage/ela/{{ ela_filename }}" alt="ELA Heatmap" class="evidence-img">
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">2. Error Level Analysis Heatmap (Q95)</div>
+                    <div class="evidence-desc">Jet color spectrum: Red/Yellow = elevated compression error.</div>
+                </div>
+            </div>
+
+            <!-- 3. Binary Tamper Mask -->
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% set mask_filename = forensic_res.mask_path.rsplit('/', 1)[-1] if '/' in forensic_res.mask_path else forensic_res.mask_path.rsplit('\\', 1)[-1] %}
+                    <img src="/storage/ela/{{ mask_filename }}" alt="Tamper Mask" class="evidence-img">
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">3. Binary Tamper Mask</div>
+                    <div class="evidence-desc">White pixels exceed threshold (Tamper ratio: {{ (verification.tamper_ratio * 100)|round(2) }}%).</div>
+                </div>
+            </div>
+
+            <!-- 4. Highlighted Suspicious Regions -->
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% set high_filename = forensic_res.highlighted_path.rsplit('/', 1)[-1] if '/' in forensic_res.highlighted_path else forensic_res.highlighted_path.rsplit('\\', 1)[-1] %}
+                    <img src="/storage/ela/{{ high_filename }}" alt="Highlighted Regions" class="evidence-img">
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">4. Localized Suspicious Regions</div>
+                    <div class="evidence-desc">Bounding boxes over discrete connected tamper contours.</div>
+                </div>
+            </div>
+
+            <!-- 5. Noise Variance Map -->
+            {% if forensic_res.noise_map_path %}
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% set noise_filename = forensic_res.noise_map_path.rsplit('/', 1)[-1] if '/' in forensic_res.noise_map_path else forensic_res.noise_map_path.rsplit('\\', 1)[-1] %}
+                    <img src="/storage/noise/{{ noise_filename }}" alt="Noise Map" class="evidence-img">
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">5. High-Pass Noise Residual Map</div>
+                    <div class="evidence-desc">Viridis map of local noise variance across 8x8 grid cells.</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 6. Compression Blockiness Map -->
+            {% if forensic_res.compression_map_path %}
+            <div class="evidence-card">
+                <div class="evidence-img-wrap">
+                    {% set comp_filename = forensic_res.compression_map_path.rsplit('/', 1)[-1] if '/' in forensic_res.compression_map_path else forensic_res.compression_map_path.rsplit('\\', 1)[-1] %}
+                    <img src="/storage/compression/{{ comp_filename }}" alt="Compression Map" class="evidence-img">
+                </div>
+                <div class="evidence-footer">
+                    <div class="evidence-title">6. Compression Blockiness Map</div>
+                    <div class="evidence-desc">Magma spectrum of 8x8 DCT grid boundary discontinuities.</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TAB 2: NUMERICAL FEATURES -->
+    <div id="tab-features" class="tab-content">
+        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">
+            Extracted numerical feature vector provided to the trained scikit-learn <code>RandomForestClassifier</code>.
+        </p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Feature Name</th>
+                        <th>Extracted Value</th>
+                        <th>Benchmark Normal</th>
+                        <th>Diagnostic Domain</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for k, v in features.items() %}
+                    <tr>
+                        <td><code>{{ k }}</code></td>
+                        <td style="font-weight: 700; color: #0f172a;">{{ v|round(4) if v is number else v }}</td>
+                        <td style="color: #64748b; font-size: 0.8rem;">
+                            {% if 'tamper_ratio' in k %}< 0.025
+                            {% elif 'mean' in k %}5.0 - 25.0
+                            {% elif 'blockiness' in k %}0.90 - 1.25
+                            {% elif 'disparity' in k %}< 2.50
+                            {% elif 'copymove' in k %}0.0
+                            {% else %}Standard
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary" style="font-size: 0.7rem;">
+                                {% if 'ela' in k %}ELA
+                                {% elif 'noise' in k %}Noise
+                                {% elif 'compression' in k or 'dct' in k %}JPEG / DCT
+                                {% elif 'copymove' in k %}Copy-Move
+                                {% elif 'sharpness' in k %}Sharpness
+                                {% elif 'ocr' in k or 'layout' in k %}Typography
+                                {% else %}Metadata
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 3: METADATA & CRYPTOGRAPHY -->
+    <div id="tab-metadata" class="tab-content">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Cryptographic File Integrity</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong>SHA-256 Hash:</strong><br/><code style="font-size: 0.75rem; word-break: break-all;">{{ document.sha256 }}</code></p>
+                    <p style="margin-bottom: 0.5rem;"><strong>File Size:</strong> {{ document.file_size }} bytes ({{ (document.file_size / 1024)|round(1) }} KB)</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>MIME Type:</strong> {{ document.mime_type }}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Upload Date:</strong> {{ document.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
+                    <p style="margin: 0;"><strong>Original Filename:</strong> {{ document.original_file_path.rsplit('/', 1)[-1] if '/' in document.original_file_path else document.original_file_path.rsplit('\\', 1)[-1] }}</p>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Embedded Metadata Analysis</h4>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong>Producer / Software:</strong> {{ metadata.get('producer') or metadata.get('software') or 'None Detected' }}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Creator / Author:</strong> {{ metadata.get('creator') or metadata.get('author') or 'None' }}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Creation Date:</strong> {{ metadata.get('creation_date') or metadata.get('datetime_original') or 'N/A' }}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Modification Date:</strong> {{ metadata.get('mod_date') or 'N/A' }}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Editing Software Flag:</strong> <span class="badge {{ 'badge-danger' if metadata.get('editing_software_detected') or metadata.get('suspicious_producer_detected') else 'badge-success' }}">{{ 'FLAGGED' if metadata.get('editing_software_detected') or metadata.get('suspicious_producer_detected') else 'CLEAN' }}</span></p>
+                    <p style="margin: 0;"><strong>Font Count:</strong> {{ metadata.get('font_count', 'N/A') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: OCR & TYPOGRAPHY -->
+    <div id="tab-ocr" class="tab-content">
+        <div style="margin-bottom: 1.25rem;">
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem;">OCR Text & Baseline Alignment</h4>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
+                    <strong>Engine Status:</strong> {{ 'Active (Tesseract)' if ocr_data.get('available') else 'Morphological Fallback' }} • 
+                    <strong>Words Recognized:</strong> {{ ocr_data.get('word_count', 0) }} • 
+                    <strong>Baseline Alignment Variance:</strong> {{ ocr_data.get('baseline_variance', 0.0)|round(2) }}
+                </p>
+                <div style="font-family: monospace; font-size: 0.85rem; background: #ffffff; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; color: #0f172a;">
+                    {{ ocr_data.get('extracted_text_preview') or 'No OCR text extracted from this document sample.' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: REGISTRY DETAILS -->
+    <div id="tab-registry" class="tab-content">
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Local Verification Registry Audit</h4>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Registry Field</th>
+                        <th>User Submitted Value</th>
+                        <th>Registry Master Record</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Document Number</td>
+                        <td>{{ document.document_number }}</td>
+                        <td>{{ reg_record.document_number or 'NOT FOUND' }}</td>
+                        <td><span class="badge {{ 'badge-success' if reg_record.matched else 'badge-danger' }}">{{ 'MATCH' if reg_record.matched else 'MISMATCH' }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Document Type</td>
+                        <td>{{ document.document_type }}</td>
+                        <td>{{ reg_record.document_type or 'NOT FOUND' }}</td>
+                        <td><span class="badge {{ 'badge-success' if reg_record.document_type == document.document_type else 'badge-warning' }}">{{ 'MATCH' if reg_record.document_type == document.document_type else 'DIFFERENT' }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Holder Name</td>
+                        <td>{{ document.holder_name }}</td>
+                        <td>{{ reg_record.holder_name or 'NOT FOUND' }}</td>
+                        <td><span class="badge {{ 'badge-success' if reg_record.holder_name == document.holder_name else 'badge-secondary' }}">{{ 'MATCH' if reg_record.holder_name == document.holder_name else 'MISMATCH' }}</span></td>
+                    </tr>
+                    <tr>
+                        <td>Issuing Authority</td>
+                        <td>{{ document.issuing_authority or 'N/A' }}</td>
+                        <td>{{ reg_record.issuing_authority or 'N/A' }}</td>
+                        <td><span class="badge badge-secondary">RECORDED</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 6: DEVELOPER / DEBUG DIAGNOSTICS (Requirement 15) -->
+    <div id="tab-debug" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">Developer & Forensic Scientist Inspection Mode</h4>
+                <p style="color: #64748b; font-size: 0.82rem; margin: 0;">
+                    Transparent breakdown of raw measurements, normalized anomaly scores (0.000–1.000), severity levels, and applied domain weights.
+                </p>
+            </div>
+            <span class="badge badge-secondary" style="font-family: monospace; font-size: 0.8rem;">ENGINE: v2.0-MULTI-SIGNAL-CONSENSUS</span>
+        </div>
+
+        {% set dbg = signals.get('debug_info', {}) %}
+        <div class="table-responsive" style="margin-bottom: 1.5rem;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Forensic Domain</th>
+                        <th>Raw Measurement</th>
+                        <th>Normalized Anomaly (0–1)</th>
+                        <th>Severity Level</th>
+                        <th>Domain Weight</th>
+                        <th>Contribution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Random Forest -->
+                    {% set rf_d = dbg.get('random_forest', {}) %}
+                    <tr>
+                        <td><strong>Random Forest ML</strong></td>
+                        <td><code>Pred: {{ rf_d.get('prediction', '0') }}, Prob: {{ rf_d.get('manipulation_probability', 0.0) }}%</code></td>
+                        <td><strong style="color: #0284c7;">{{ rf_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if rf_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if rf_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if rf_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ rf_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (rf_d.get('weight', 0.30) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ rf_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+
+                    <!-- ELA -->
+                    {% set ela_d = dbg.get('ela', {}) %}
+                    <tr>
+                        <td><strong>Error Level Analysis (ELA)</strong></td>
+                        <td><code>tamper_ratio: {{ ela_d.get('raw_tamper_ratio', 0.0) }}, comp: {{ ela_d.get('raw_component_count', 0) }}</code></td>
+                        <td><strong style="color: #0284c7;">{{ ela_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if ela_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if ela_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if ela_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ ela_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (ela_d.get('weight', 0.20) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ ela_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+
+                    <!-- Copy-Move -->
+                    {% set cp_d = dbg.get('copymove', {}) %}
+                    <tr>
+                        <td><strong>Copy-Move Cloned Regions</strong></td>
+                        <td><code>clusters: {{ cp_d.get('coherent_clusters', 0) }}, raw_pairs: {{ cp_d.get('raw_pairs', 0)|int }}</code></td>
+                        <td><strong style="color: #0284c7;">{{ cp_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if cp_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if cp_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if cp_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ cp_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (cp_d.get('weight', 0.20) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ cp_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+
+                    <!-- Sensor Noise -->
+                    {% set ns_d = dbg.get('noise', {}) %}
+                    <tr>
+                        <td><strong>Sensor Noise Consistency</strong></td>
+                        <td><code>peak_disparity: {{ ns_d.get('raw_disparity_ratio', 1.0) }}</code></td>
+                        <td><strong style="color: #0284c7;">{{ ns_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if ns_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if ns_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if ns_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ ns_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (ns_d.get('weight', 0.15) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ ns_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+
+                    <!-- Compression Blockiness -->
+                    {% set cm_d = dbg.get('compression', {}) %}
+                    <tr>
+                        <td><strong>JPEG DCT Blockiness</strong></td>
+                        <td><code>blockiness: {{ cm_d.get('raw_blockiness', 1.0) }}</code></td>
+                        <td><strong style="color: #0284c7;">{{ cm_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if cm_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if cm_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if cm_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ cm_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (cm_d.get('weight', 0.10) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ cm_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+
+                    <!-- Metadata -->
+                    {% set mt_d = dbg.get('metadata', {}) %}
+                    <tr>
+                        <td><strong>Metadata Footprint</strong></td>
+                        <td><code>edit_sw: {{ mt_d.get('editing_software_flag', 0) }}, date_incons: {{ mt_d.get('date_inconsistency_flag', 0) }}</code></td>
+                        <td><strong style="color: #0284c7;">{{ mt_d.get('normalized_score', 0.0) }}</strong></td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if mt_d.get('severity') == 'HIGH_ANOMALY' else ('badge-warning' if mt_d.get('severity') == 'MODERATE_ANOMALY' else ('badge-secondary' if mt_d.get('severity') == 'LOW_ANOMALY' else 'badge-success')) }}">
+                                {{ mt_d.get('severity', 'NORMAL') }}
+                            </span>
+                        </td>
+                        <td>{{ (mt_d.get('weight', 0.05) * 100)|round(0) }}%</td>
+                        <td><strong>+{{ mt_d.get('weighted_contribution', 0.0) }} pts</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Composite Score Card -->
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.25rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; text-align: center;">
+                <div style="background: white; padding: 0.75rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Composite Anomaly Score</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">{{ dbg.get('final_composite_score', 0.0) }} / 100</div>
+                </div>
+                <div style="background: white; padding: 0.75rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Final State Verdict</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {{ '#16a34a' if dbg.get('final_classification') == 'AUTHENTIC' else ('#dc2626' if dbg.get('final_classification') == 'POTENTIALLY MANIPULATED' else '#d97706') }};">
+                        {{ dbg.get('final_classification', 'AUTHENTIC') }}
+                    </div>
+                </div>
+                <div style="background: white; padding: 0.75rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Calibrated Confidence</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #0284c7;">{{ dbg.get('final_confidence', 0.0) }}%</div>
+                </div>
+            </div>
+            <p style="font-size: 0.78rem; color: #64748b; margin: 0.75rem 0 0 0; text-align: center;">
+                <em>Weighted score combines mathematical evidence: ML 30% + ELA 20% + Copy-Move 20% + Noise 15% + Compression 10% + Metadata 5%. Multi-signal consensus prevents false positives from single noisy features.</em>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

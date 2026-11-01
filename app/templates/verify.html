@@ -1,0 +1,126 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Upload & Verify Document - AI Forensics{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 1rem auto;">
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Upload & Verify Document</h1>
+            <p style="color: #64748b; font-size: 0.9rem;">Submit a government or institutional document for record and forensic verification</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('search.search_documents') }}" class="btn btn-secondary btn-sm">Search Existing Document</a>
+            <a href="{{ url_for('history.timeline') }}" class="btn btn-secondary btn-sm">View Document History</a>
+        </div>
+    </div>
+
+    <!-- Operating Notice Banner -->
+    <div class="alert alert-info" style="margin-bottom: 1.5rem;">
+        <div>
+            <strong>Phase 1 Scope Notice:</strong> The verification registry is currently loaded from local/demo data. Government API verification (DigiLocker / API Setu) is not connected in Phase 1.
+        </div>
+    </div>
+
+    <div class="card">
+        <form id="uploadForm" method="POST" action="{{ url_for('verify.upload_and_verify') }}" enctype="multipart/form-data">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label" for="document_type">Document Type *</label>
+                    <select name="document_type" id="document_type" class="form-control" required>
+                        <option value="">-- Select Document Category --</option>
+                        {% for dt in document_types %}
+                            <option value="{{ dt }}">{{ dt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="document_number">Document Number *</label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" required placeholder="e.g. MH/INC/2026/0001 or ABCDE1234F">
+                    <div class="form-text">Used for authoritative registry record matching.</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label class="form-label" for="holder_name">Holder Name *</label>
+                    <input type="text" name="holder_name" id="holder_name" class="form-control" required placeholder="Full legal name on document">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="issue_date">Issue Date</label>
+                    <input type="date" name="issue_date" id="issue_date" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="document_name">Document Name / Title (Optional)</label>
+                <input type="text" name="document_name" id="document_name" class="form-control" placeholder="e.g. Annual Income Certificate 2026">
+            </div>
+
+            <!-- Drag & Drop Zone -->
+            <div class="form-group">
+                <label class="form-label">Upload Document File *</label>
+                <div id="dropZone" style="border: 2px dashed #94a3b8; border-radius: 8px; padding: 2.5rem 1.5rem; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-weight: 700; color: #0f172a; margin-bottom: 0.25rem;">Drag and drop document file here, or click to browse</div>
+                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Supported Formats: PDF, JPG, JPEG, PNG (Max: 16 MB)</div>
+                    <label for="document_file" class="btn btn-secondary btn-sm" style="cursor: pointer;">
+                        Browse Computer
+                    </label>
+                    <input type="file" name="document_file" id="document_file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png" required>
+                </div>
+                
+                <div id="filePreview" style="display: none; align-items: center; justify-content: space-between; background: #e0f2fe; border: 1px solid #7dd3fc; padding: 0.75rem 1rem; border-radius: 6px; margin-top: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #0369a1; font-weight: 600;">
+                        <span>📎</span>
+                        <span id="fileNameSpan"></span>
+                        <span id="fileSizeSpan" style="color: #0284c7; font-weight: 400; font-size: 0.8rem;"></span>
+                    </div>
+                    <span style="font-size: 0.75rem; color: #0284c7; font-weight: 700;">READY</span>
+                </div>
+            </div>
+
+            <!-- Submit CTA -->
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="reset" class="btn btn-secondary">Clear Form</button>
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" style="padding-left: 2rem; padding-right: 2rem;">
+                    🚀 UPLOAD & VERIFY
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Progress Animation Modal -->
+<div id="progressModal" class="modal-overlay">
+    <div class="modal-box" style="text-align: center; max-width: 460px;">
+        <div style="font-size: 2.5rem; margin-bottom: 1rem;" class="pulse">🔬</div>
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Analyzing Document...</h3>
+        <p id="progressStatusText" style="color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">
+            Validating file integrity & computing SHA-256...
+        </p>
+        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+            <div style="width: 100%; height: 100%; background: #0284c7; animation: loadingBar 2s infinite ease-in-out;"></div>
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.75rem; color: #94a3b8;">
+            Please do not refresh the page while the forensic pipeline is active.
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes loadingBar {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(0%); }
+    100% { transform: translateX(100%); }
+}
+#dropZone.dragover {
+    background: #e0f2fe;
+    border-color: #0284c7;
+}
+</style>
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,45 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Register - AI Forensics System{% endblock %}
+
+{% block content %}
+<div style="max-width: 460px; margin: 3rem auto;">
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <span style="font-size: 2.2rem;">📝</span>
+            <h2 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-top: 0.5rem;">Create Account</h2>
+            <p style="font-size: 0.85rem; color: #64748b;">Register for local document verification access</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input type="text" name="username" id="username" class="form-control" required placeholder="Choose a username">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" name="email" id="email" class="form-control" required placeholder="name@domain.local">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" name="password" id="password" class="form-control" required placeholder="At least 6 characters">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Confirm Password</label>
+                <input type="password" name="confirm_password" id="confirm_password" class="form-control" required placeholder="Confirm password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem;">
+                Register Account
+            </button>
+        </form>
+
+        <div style="margin-top: 1.5rem; text-align: center; font-size: 0.85rem; color: #64748b;">
+            Already have an account? <a href="{{ url_for('auth.login') }}" style="color: #0284c7; font-weight: 600;">Log in here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

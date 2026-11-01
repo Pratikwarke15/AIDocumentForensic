@@ -1,0 +1,171 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - AI Forensics System{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <span class="badge badge-danger">ADMINISTRATIVE CONSOLE</span>
+            <span style="font-size: 0.8rem; color: #64748b;">Full System Oversight</span>
+        </div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Forensic Platform Analytics</h1>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('registry.list_records') }}" class="btn btn-secondary btn-sm">🏛️ Manage Registry</a>
+        <a href="{{ url_for('admin.model_management') }}" class="btn btn-secondary btn-sm">🧠 Model Management</a>
+        <a href="{{ url_for('admin.user_management') }}" class="btn btn-secondary btn-sm">👥 User Management</a>
+        <a href="{{ url_for('admin.audit_logs') }}" class="btn btn-secondary btn-sm">📜 Audit Logs</a>
+    </div>
+</div>
+
+<!-- 8 Core Metric Cards (Prompt Section 23) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="card" style="padding: 1rem; border-left: 4px solid #0f172a;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Users</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #0f172a;">{{ stats.total_users }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #0284c7;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Documents</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #0284c7;">{{ stats.total_docs }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #3b82f6;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Verifications</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #3b82f6;">{{ stats.total_verifs }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #16a34a;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Verified Records</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #16a34a;">{{ stats.verified_records }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #f97316;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Records Not Found</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #f97316;">{{ stats.records_not_found }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #059669;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Authentic Files</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #059669;">{{ stats.authentic_count }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #dc2626;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Manipulated Files</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #dc2626;">{{ stats.manipulated_count }}</div>
+    </div>
+    <div class="card" style="padding: 1rem; border-left: 4px solid #d97706;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Inconclusive Files</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: #d97706;">{{ stats.inconclusive_count }}</div>
+    </div>
+</div>
+
+<!-- Interactive Analytics Charts Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+    <!-- Chart 1: Forensic Results Distribution -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Forensic Results Breakdown</h3>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <canvas id="forensicChart" width="220" height="200"></canvas>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 1rem; font-size: 0.8rem; margin-top: 0.75rem;">
+            <span style="color: #059669;">● Authentic ({{ stats.authentic_count }})</span>
+            <span style="color: #dc2626;">● Manipulated ({{ stats.manipulated_count }})</span>
+            <span style="color: #d97706;">● Inconclusive ({{ stats.inconclusive_count }})</span>
+        </div>
+    </div>
+
+    <!-- Chart 2: Record Verification Distribution -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Registry Record Status</h3>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <canvas id="recordChart" width="220" height="200"></canvas>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 1rem; font-size: 0.8rem; margin-top: 0.75rem;">
+            <span style="color: #16a34a;">● Verified ({{ stats.verified_records }})</span>
+            <span style="color: #f97316;">● Not Found ({{ stats.records_not_found }})</span>
+        </div>
+    </div>
+
+    <!-- Chart 3: Document Types Bar Chart -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Document Categories</h3>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <canvas id="typeChart" width="300" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Suspicious Documents Priority Panel -->
+<div class="card" style="border-left: 5px solid #dc2626;">
+    <div class="card-header">
+        <h3 class="card-title" style="color: #b91c1c;">⚠️ Recent Suspicious Documents (Tampering Flagged)</h3>
+    </div>
+    {% if suspicious_verifs %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Document Number</th>
+                        <th>Type</th>
+                        <th>Holder</th>
+                        <th>Record Status</th>
+                        <th>Tamper Ratio</th>
+                        <th>Confidence</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sv in suspicious_verifs %}
+                    <tr>
+                        <td>{{ sv.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><strong>{{ sv.document.document_number }}</strong></td>
+                        <td>{{ sv.document.document_type }}</td>
+                        <td>{{ sv.document.holder_name }}</td>
+                        <td><span class="badge {{ 'badge-success' if sv.record_status == 'VERIFIED' else 'badge-danger' }}">{{ sv.record_status }}</span></td>
+                        <td style="color: #dc2626; font-weight: 700;">{{ (sv.tamper_ratio * 100)|round(2) }}%</td>
+                        <td style="font-weight: 700;">{{ sv.confidence|round(1) }}%</td>
+                        <td>
+                            <a href="{{ url_for('verify.view_result', v_id=sv.id) }}" class="btn btn-sm btn-danger">Inspect Dossier</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p style="color: #64748b; font-size: 0.85rem; padding: 1rem 0;">No potentially manipulated documents currently detected.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Forensic Doughnut Chart
+    renderDoughnutChart(
+        'forensicChart',
+        [{{ stats.authentic_count }}, {{ stats.manipulated_count }}, {{ stats.inconclusive_count }}],
+        ['#059669', '#dc2626', '#d97706'],
+        ['Authentic', 'Manipulated', 'Inconclusive']
+    );
+
+    // 2. Record Doughnut Chart
+    renderDoughnutChart(
+        'recordChart',
+        [{{ stats.verified_records }}, {{ stats.records_not_found }}],
+        ['#16a34a', '#f97316'],
+        ['Verified', 'Not Found']
+    );
+
+    // 3. Document Types Bar Chart
+    const docTypesObj = {{ stats.doc_types|tojson }};
+    const labels = Object.keys(docTypesObj).slice(0, 5);
+    const data = labels.map(k => docTypesObj[k]);
+    renderBarChart('typeChart', data.length > 0 ? data : [1], labels.length > 0 ? labels : ['None'], '#0284c7');
+});
+</script>
+{% endblock %}

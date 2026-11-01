@@ -1,0 +1,68 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}User Management - Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">User Management</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Manage user accounts, administrative privileges, and system access</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Username</th>
+                    <th>Email Address</th>
+                    <th>Role</th>
+                    <th>Account Status</th>
+                    <th>Created Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>#{{ u.id }}</td>
+                    <td><strong>{{ u.username }}</strong></td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-danger' if u.role == 'admin' else 'badge-secondary' }}">
+                            {{ u.role }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if u.is_active else 'badge-danger' }}">
+                            {{ 'Active' if u.is_active else 'Deactivated' }}
+                        </span>
+                    </td>
+                    <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                        {% if u.id != current_user.id %}
+                        <div style="display: flex; gap: 0.35rem;">
+                            <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=u.id) }}">
+                                <button type="submit" class="btn btn-sm {{ 'btn-secondary' if u.is_active else 'btn-primary' }}">
+                                    {{ 'Deactivate' if u.is_active else 'Activate' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.toggle_user_role', user_id=u.id) }}">
+                                <button type="submit" class="btn btn-sm btn-secondary">
+                                    Make {{ 'User' if u.role == 'admin' else 'Admin' }}
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                            <span style="font-size: 0.75rem; color: #94a3b8;">Current Session</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

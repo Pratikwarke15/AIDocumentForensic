@@ -1,0 +1,73 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Document Master: {{ document.document_number }} - AI Forensics{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Document Master Record</div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">{{ document.document_number }}</h1>
+    <p style="color: #64748b; font-size: 0.9rem;">Type: <strong>{{ document.document_type }}</strong> • Registered Holder: <strong>{{ document.holder_name }}</strong></p>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">Cryptographic Fingerprint & File Info</h3>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.85rem;">
+        <div>
+            <span style="color: #64748b;">SHA-256 Hash:</span>
+            <div style="font-family: monospace; font-size: 0.75rem; word-break: break-all;">{{ document.sha256 }}</div>
+        </div>
+        <div>
+            <span style="color: #64748b;">File Size:</span>
+            <div style="font-weight: 700;">{{ document.file_size }} bytes ({{ (document.file_size / 1024)|round(1) }} KB)</div>
+        </div>
+        <div>
+            <span style="color: #64748b;">MIME Type:</span>
+            <div style="font-weight: 700;">{{ document.mime_type }}</div>
+        </div>
+        <div>
+            <span style="color: #64748b;">First Recorded:</span>
+            <div style="font-weight: 700;">{{ document.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Verification Attempts History ({{ verifications|length }})</h3>
+        <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-sm btn-primary">Run New Verification</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Attempt ID</th>
+                    <th>Date / Time</th>
+                    <th>Record Status</th>
+                    <th>Forensic Status</th>
+                    <th>Confidence</th>
+                    <th>Final Verdict</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in verifications %}
+                <tr>
+                    <td>#{{ v.id }}</td>
+                    <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td><span class="badge {{ 'badge-success' if v.record_status == 'VERIFIED' else 'badge-danger' }}">{{ v.record_status }}</span></td>
+                    <td><span class="badge {{ 'badge-success' if v.forensic_status == 'AUTHENTIC' else ('badge-danger' if v.forensic_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}">{{ v.forensic_status }}</span></td>
+                    <td style="font-weight: 700;">{{ v.confidence|round(1) }}%</td>
+                    <td style="font-size: 0.85rem; font-weight: 600;">{{ v.final_status }}</td>
+                    <td>
+                        <a href="{{ url_for('verify.view_result', v_id=v.id) }}" class="btn btn-sm btn-secondary">View Result</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

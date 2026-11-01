@@ -1,0 +1,11 @@
+{
+    "record_id": "AADHAAR-2026-0001",
+    "document_type": "Aadhaar",
+    "document_number": "XXXX-XXXX-9012",
+    "document_name": "Unique Identification Card",
+    "holder_name": "Aarav Sharma",
+    "issue_date": "2024-05-10",
+    "issuing_authority": "Unique Identification Authority (Demo Registry)",
+    "status": "VERIFIED",
+    "reference_file": "AADHAAR-2026-0001.pdf"
+}

@@ -1,0 +1,106 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Verification History - AI Forensics{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: #0f172a;">Verification History</h1>
+        <p style="color: #64748b; font-size: 0.9rem;">Complete chronological audit trail of all processed documents</p>
+    </div>
+    <a href="{{ url_for('verify.upload_and_verify') }}" class="btn btn-primary">
+        ➕ New Verification
+    </a>
+</div>
+
+<!-- Filters Bar -->
+<div class="card" style="padding: 1rem 1.25rem;">
+    <form method="GET" action="{{ url_for('history.timeline') }}" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 240px;">
+            <input type="text" name="q" class="form-control" value="{{ search_query }}" placeholder="Search by document number or holder...">
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #64748b;">Status:</span>
+            <select name="status" class="form-control" style="width: auto;" onchange="this.form.submit()">
+                <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All Statuses</option>
+                <option value="verified" {{ 'selected' if status_filter == 'verified' else '' }}>Record Verified</option>
+                <option value="manipulated" {{ 'selected' if status_filter == 'manipulated' else '' }}>Potentially Manipulated</option>
+                <option value="authentic" {{ 'selected' if status_filter == 'authentic' else '' }}>Forensically Authentic</option>
+                <option value="inconclusive" {{ 'selected' if status_filter == 'inconclusive' else '' }}>Inconclusive</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- History Table -->
+<div class="card">
+    {% if verifications %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date / Time</th>
+                        <th>Document Number</th>
+                        <th>Type</th>
+                        <th>Holder Name</th>
+                        <th>Record Status</th>
+                        <th>Forensic Status</th>
+                        <th>Final Verdict</th>
+                        <th>Confidence</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in verifications %}
+                    <tr>
+                        <td style="white-space: nowrap; color: #64748b; font-size: 0.8rem;">
+                            {{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('verify.view_result', v_id=v.id) }}" style="font-weight: 700; color: #0284c7; text-decoration: none;">
+                                {{ v.document.document_number }}
+                            </a>
+                        </td>
+                        <td>{{ v.document.document_type }}</td>
+                        <td>{{ v.document.holder_name }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if v.record_status == 'VERIFIED' else 'badge-danger' }}">
+                                {{ v.record_status }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if v.forensic_status == 'AUTHENTIC' else ('badge-danger' if v.forensic_status == 'POTENTIALLY MANIPULATED' else 'badge-warning') }}">
+                                {{ v.forensic_status }}
+                            </span>
+                        </td>
+                        <td style="font-size: 0.8rem; font-weight: 600; color: #1e293b;">
+                            {{ v.final_status }}
+                        </td>
+                        <td style="font-weight: 700;">
+                            {{ v.confidence|round(1) }}%
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 0.35rem;">
+                                <a href="{{ url_for('verify.view_result', v_id=v.id) }}" class="btn btn-sm btn-secondary" title="View Full Analysis">
+                                    View
+                                </a>
+                                {% if v.report_path %}
+                                <a href="{{ url_for('verify.download_report', v_id=v.id) }}" class="btn btn-sm btn-primary" title="Download PDF">
+                                    PDF
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2.5rem; color: #64748b;">
+            <p>No verification history entries match the selected criteria.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
