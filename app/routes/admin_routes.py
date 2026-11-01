@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import datetime
 from pathlib import Path
@@ -6,6 +6,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app.models import User, Document, VerificationHistory, ForensicResult, ModelVersion, AuditLog, VerificationRecord
+from app.routes.verify_routes import DOCUMENT_TYPES
+from app.verification.excel_manager import DOCUMENT_SCHEMAS
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -55,11 +57,20 @@ def dashboard():
             'doc_types': {dt: count for dt, count in doc_type_counts}
         }
 
+        category_counts = {}
+        for dt in DOCUMENT_TYPES:
+            category_counts[dt] = session.query(VerificationRecord).filter_by(document_type=dt, is_active=True).count()
+        total_registry_records = sum(category_counts.values())
+
         return render_template(
             'admin/dashboard.html',
             stats=stats,
             suspicious_verifs=suspicious_verifs,
-            recent_verifs=recent_verifs
+            recent_verifs=recent_verifs,
+            document_types=DOCUMENT_TYPES,
+            category_counts=category_counts,
+            total_registry_records=total_registry_records,
+            document_schemas=DOCUMENT_SCHEMAS
         )
     finally:
         session.close()

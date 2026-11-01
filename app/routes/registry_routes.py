@@ -81,14 +81,15 @@ def upload_excel():
     doc_type = request.form.get('document_type', '').strip()
     file_obj = request.files.get('excel_file')
 
+    redirect_target = request.referrer or url_for('admin.dashboard')
     if not doc_type or not file_obj or not file_obj.filename:
         flash('Please select a Document Category and an Excel/CSV file to upload.', 'danger')
-        return redirect(url_for('registry.list_records'))
+        return redirect(redirect_target)
 
     filename = secure_filename(file_obj.filename)
     if not (filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv')):
         flash('Only .xlsx, .xls, and .csv spreadsheet formats are supported.', 'danger')
-        return redirect(url_for('registry.list_records'))
+        return redirect(redirect_target)
 
     try:
         file_bytes = file_obj.read()
@@ -118,7 +119,7 @@ def upload_excel():
     except Exception as e:
         flash(f"Failed to import Excel file: {str(e)}", 'danger')
 
-    return redirect(url_for('registry.list_records'))
+    return redirect(redirect_target)
 
 @registry_bp.route('/add', methods=['POST'])
 def add_record():

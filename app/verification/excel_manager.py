@@ -476,3 +476,4 @@ def import_records_to_registry(
         session.close()
 
     return stats
+

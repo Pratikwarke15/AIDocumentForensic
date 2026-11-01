@@ -62,35 +62,46 @@
 
             <!-- Drag & Drop Zone -->
             <div class="form-group">
-                <label class="form-label">Upload Document File *</label>
-                <div id="dropZone" style="border: 2px dashed #94a3b8; border-radius: 8px; padding: 2.25rem 1.5rem; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
-                    <div class="drop-instruction" style="font-weight: 700; color: #0f172a; margin-bottom: 0.25rem;">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Upload Document File *</span>
+                    <span id="fileSelectedBadge" class="badge badge-success" style="display: none; font-size: 0.75rem;">✓ File Ready</span>
+                </label>
+                
+                <div id="dropZone" style="border: 2px dashed #94a3b8; border-radius: 8px; padding: 2rem 1.5rem; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.25s ease-in-out;">
+                    <div id="dropZoneIcon" style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+                    <div id="dropZoneTitle" class="drop-instruction" style="font-weight: 700; color: #0f172a; margin-bottom: 0.25rem;">
                         Drag and drop document file here, or click to browse
                     </div>
-                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">Supported Formats: PDF, JPG, JPEG, PNG (Max: 16 MB)</div>
-                    <label for="document_file" class="btn btn-secondary btn-sm" style="cursor: pointer;">
-                        📁 Browse Computer
-                    </label>
-                    <input type="file" name="document_file" id="document_file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <div id="dropZoneSubtext" style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">
+                        Supported Formats: PDF, JPG, JPEG, PNG (Max: 16 MB)
+                    </div>
+                    <div>
+                        <label for="document_file" class="btn btn-secondary btn-sm" style="cursor: pointer; pointer-events: auto;">
+                            📁 Browse Computer
+                        </label>
+                        <input type="file" name="document_file" id="document_file" style="display: none;" accept=".pdf,.jpg,.jpeg,.png" required>
+                    </div>
                 </div>
                 
                 <!-- Live Confirmation & Thumbnail Card -->
                 <div id="filePreview" style="display: none; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1.5px solid #86efac; padding: 0.85rem 1.25rem; border-radius: 8px; margin-top: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 0.85rem;">
-                        <img id="fileThumbImg" src="" alt="Thumbnail" style="display: none; width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #bbf7d0;">
+                        <img id="fileThumbImg" src="" alt="Thumbnail" style="display: none; width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1.5px solid #86efac;">
+                        <div id="filePdfIcon" style="display: none; width: 48px; height: 48px; background: #fee2e2; border: 1.5px solid #fca5a5; border-radius: 4px; display: none; align-items: center; justify-content: center; font-size: 1.5rem; color: #dc2626;">
+                            📄
+                        </div>
                         <div>
-                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                                 <span id="fileTypeBadge" class="badge badge-success" style="font-size: 0.7rem;">FILE</span>
-                                <strong id="fileNameSpan" style="color: #0f172a; font-size: 0.9rem;"></strong>
+                                <strong id="fileNameSpan" style="color: #0f172a; font-size: 0.95rem; word-break: break-all;"></strong>
                                 <span id="fileSizeSpan" style="color: #64748b; font-size: 0.8rem;"></span>
                             </div>
-                            <div style="font-size: 0.75rem; color: #16a34a; font-weight: 600; margin-top: 0.2rem;">
-                                ✓ Document attached successfully and ready for analysis
+                            <div style="font-size: 0.8rem; color: #16a34a; font-weight: 700; margin-top: 0.25rem; display: flex; align-items: center; gap: 0.3rem;">
+                                <span>✅</span> Document attached successfully & ready for forensic verification
                             </div>
                         </div>
                     </div>
-                    <label for="document_file" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; cursor: pointer; border-color: #86efac; color: #166534;">
+                    <label for="document_file" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; cursor: pointer; border-color: #86efac; color: #166534; white-space: nowrap;">
                         Change File
                     </label>
                 </div>
@@ -98,7 +109,7 @@
 
             <!-- Submit CTA -->
             <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
-                <button type="reset" class="btn btn-secondary">Clear Form</button>
+                <button type="reset" id="resetBtn" class="btn btn-secondary">Clear Form</button>
                 <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" style="padding-left: 2rem; padding-right: 2rem;">
                     🚀 UPLOAD & VERIFY
                 </button>
@@ -109,17 +120,17 @@
 
 <!-- Progress Animation Modal -->
 <div id="progressModal" class="modal-overlay">
-    <div class="modal-box" style="text-align: center; max-width: 460px;">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem;" class="pulse">🔬</div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Analyzing Document...</h3>
-        <p id="progressStatusText" style="color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">
-            Validating file integrity & computing SHA-256...
+    <div class="modal-box" style="text-align: center; max-width: 480px;">
+        <div style="font-size: 2.75rem; margin-bottom: 1rem;" class="pulse">🔬</div>
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Analyzing Document...</h3>
+        <p id="progressStatusText" style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; min-height: 2.4em;">
+            Validating file integrity & semantic structure...
         </p>
-        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 1rem;">
             <div style="width: 100%; height: 100%; background: #0284c7; animation: loadingBar 2s infinite ease-in-out;"></div>
         </div>
-        <div style="margin-top: 1rem; font-size: 0.75rem; color: #94a3b8;">
-            Please do not refresh the page while the forensic pipeline is active.
+        <div style="font-size: 0.75rem; color: #94a3b8;">
+            Please do not close or refresh the window while the forensic pipeline executes.
         </div>
     </div>
 </div>
@@ -131,9 +142,187 @@
     100% { transform: translateX(100%); }
 }
 #dropZone.dragover {
-    background: #e0f2fe;
-    border-color: #0284c7;
+    background: #e0f2fe !important;
+    border-color: #0284c7 !important;
 }
 </style>
-<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+<script src="{{ url_for('static', filename='js/upload.js') }}?v=3.1"></script>
+<script>
+// Inline Self-Contained Uploader Handler for instant browser responsiveness
+(function() {
+    function setupVerifyUploader() {
+        var dropZone = document.getElementById('dropZone');
+        var fileInput = document.getElementById('document_file');
+        var filePreview = document.getElementById('filePreview');
+        var fileNameSpan = document.getElementById('fileNameSpan');
+        var fileSizeSpan = document.getElementById('fileSizeSpan');
+        var fileThumbImg = document.getElementById('fileThumbImg');
+        var filePdfIcon = document.getElementById('filePdfIcon');
+        var fileTypeBadge = document.getElementById('fileTypeBadge');
+        var fileSelectedBadge = document.getElementById('fileSelectedBadge');
+        var dropZoneIcon = document.getElementById('dropZoneIcon');
+        var dropZoneTitle = document.getElementById('dropZoneTitle');
+        var dropZoneSubtext = document.getElementById('dropZoneSubtext');
+        var uploadForm = document.getElementById('uploadForm');
+        var submitBtn = document.getElementById('submitBtn');
+        var resetBtn = document.getElementById('resetBtn');
+        var progressModal = document.getElementById('progressModal');
+        var progressStatusText = document.getElementById('progressStatusText');
+
+        if (!dropZone || !fileInput) return;
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            var k = 1024;
+            var sizes = ['B', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function renderSelectedFile(file) {
+            if (!file) return;
+
+            var ext = (file.name.split('.').pop() || '').toLowerCase();
+            var sizeStr = formatBytes(file.size);
+
+            if (fileNameSpan) fileNameSpan.textContent = file.name;
+            if (fileSizeSpan) fileSizeSpan.textContent = '(' + sizeStr + ')';
+            if (fileTypeBadge) {
+                fileTypeBadge.textContent = ext.toUpperCase();
+                fileTypeBadge.className = 'badge ' + (ext === 'pdf' ? 'badge-danger' : 'badge-success');
+            }
+            if (fileSelectedBadge) fileSelectedBadge.style.display = 'inline-block';
+
+            // DropZone visual state
+            dropZone.style.borderColor = '#16a34a';
+            dropZone.style.backgroundColor = '#f0fdf4';
+            if (dropZoneIcon) dropZoneIcon.textContent = ext === 'pdf' ? '📕' : '🖼️';
+            if (dropZoneTitle) {
+                dropZoneTitle.innerHTML = '✅ <strong style="color: #166534;">' + file.name + '</strong> attached';
+            }
+            if (dropZoneSubtext) {
+                dropZoneSubtext.innerHTML = '<span style="color: #16a34a; font-weight: 600;">Size: ' + sizeStr + ' • Click or drag to replace</span>';
+            }
+
+            // Thumbnail / Icon
+            if (['jpg', 'jpeg', 'png', 'webp'].indexOf(ext) !== -1) {
+                if (filePdfIcon) filePdfIcon.style.display = 'none';
+                if (fileThumbImg) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        fileThumbImg.src = e.target.result;
+                        fileThumbImg.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            } else if (ext === 'pdf') {
+                if (fileThumbImg) {
+                    fileThumbImg.style.display = 'none';
+                    fileThumbImg.src = '';
+                }
+                if (filePdfIcon) {
+                    filePdfIcon.style.display = 'flex';
+                }
+            }
+
+            if (filePreview) {
+                filePreview.style.display = 'flex';
+            }
+        }
+
+        function resetUploader() {
+            if (filePreview) filePreview.style.display = 'none';
+            if (fileSelectedBadge) fileSelectedBadge.style.display = 'none';
+            if (dropZone) {
+                dropZone.style.borderColor = '#94a3b8';
+                dropZone.style.backgroundColor = '#f8fafc';
+            }
+            if (dropZoneIcon) dropZoneIcon.textContent = '📄';
+            if (dropZoneTitle) dropZoneTitle.textContent = 'Drag and drop document file here, or click to browse';
+            if (dropZoneSubtext) dropZoneSubtext.textContent = 'Supported Formats: PDF, JPG, JPEG, PNG (Max: 16 MB)';
+            if (fileThumbImg) fileThumbImg.style.display = 'none';
+            if (filePdfIcon) filePdfIcon.style.display = 'none';
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                renderSelectedFile(e.target.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                fileInput.click();
+            }
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                setTimeout(resetUploader, 50);
+            });
+        }
+
+        // Drag & Drop
+        ['dragenter', 'dragover'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            var dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                fileInput.files = dt.files;
+                renderSelectedFile(dt.files[0]);
+            }
+        });
+
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function() {
+                if (fileInput.files && fileInput.files.length > 0) {
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '⏳ Uploading & Analyzing Document...';
+                    }
+                    if (progressModal) {
+                        progressModal.classList.add('open');
+                        progressModal.style.display = 'flex';
+                        var stages = [
+                            "Validating document semantic rules & Verhoeff / PAN checksum...",
+                            "Screening image luminance, saturation & non-document patterns...",
+                            "Querying official government database records...",
+                            "Running Error Level Analysis (ELA) at Q95 compression...",
+                            "Measuring spatial noise residuals & block boundary discrepancies...",
+                            "Synthesizing 3-Pillar authenticity score & compiling dossier..."
+                        ];
+                        var idx = 0;
+                        setInterval(function() {
+                            if (idx < stages.length && progressStatusText) {
+                                progressStatusText.textContent = stages[idx];
+                                idx++;
+                            }
+                        }, 1200);
+                    }
+                }
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupVerifyUploader);
+    } else {
+        setupVerifyUploader();
+    }
+})();
+</script>
 {% endblock %}

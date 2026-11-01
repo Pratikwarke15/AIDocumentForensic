@@ -460,3 +460,4 @@ def validate_document_template(
             'id_notes': id_notes
         }
     }
+
